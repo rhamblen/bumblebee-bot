@@ -85,7 +85,7 @@ Full reasoning and lore: **[Concept & Lore](docs/Concept-and-Lore.md)**.
 
 ```
 bumblebee-bot/
-├── docker/        # container source for the 8 services (compose + Dockerfiles)
+├── docker/        # container source for the 9 services (compose + Dockerfiles)
 ├── docs/          # full project write-up (mirrors the GitHub Wiki)
 ├── data/          # character tables, FFmpeg presets, source CSV/XLSX
 ├── scripts/
@@ -109,8 +109,9 @@ The README is the hook; everything below is written up in full under [`docs/`](d
 
 - **[Concept & Lore](docs/Concept-and-Lore.md)** — what Bumblebee is and the design rules
 - **[Architecture & Workflow](docs/Architecture-and-Workflow.md)** — diagrams: pipeline, request lifecycle, multi-device topology
-- **[Docker Containers](docs/Docker-Containers.md)** — the 8 services, building, publishing, and custom Unraid icons
+- **[Docker Containers](docs/Docker-Containers.md)** — the 9 services, building, publishing, and custom Unraid icons
 - **[Unraid Template](docs/Unraid-Template.md)** — Community Apps install + env vars
+- **[Admin Console](docs/Admin-Console.md)** — the operator web UI: stack health, config validation, voice table, n8n workflow I/O
 - **[STT Options](docs/STT-Options.md)** — speech-to-text choices and how to swap them
 - **[TTS Options](docs/TTS-Options.md)** — engine comparison and when to use each
 - **[Voice Input: Alexa → ESP32/Xiaozhi](docs/Voice-Input-Alexa-vs-ESP32.md)** — what we tried, what didn't work, and your options

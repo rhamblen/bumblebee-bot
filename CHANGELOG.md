@@ -10,10 +10,28 @@ dated, and pushed to GitHub along with any docs/Wiki updates — so the reposito
 always reflects the project's true current status and the choices made.
 
 ## [Unreleased]
+
+## [0.5.0] - 2026-06-14
 ### Added
-- **Admin console container** (`docker/admin-console/`, port 5012) — web UI over the
-  orchestrator, with an optional n8n workflow I/O panel. Added to `docker-compose.yml`
-  with its `net.unraid.docker.icon` + `net.unraid.docker.webui` labels.
+- **Admin console** (`docker/admin-console/`, port 5012) — a read-mostly operator web UI
+  on `bumblebee_default` (FastAPI + server-rendered HTML). It never holds its own state:
+  it reads the same sources the live containers read (orchestrator `/voices`, the mounted
+  `docker-compose.yml` and `.env`). Tabbed shell driven by a declarative array, with
+  per-tab lazy-load, **↻ refresh**, and a "last updated" timestamp:
+  - **Service health** — the *whole stack* in **workflow order** (admin-console → gateway →
+    whisper → n8n → redis → ollama → orchestrator → audio-converter → F5/Parler/XTTS/Chatterbox),
+    each probed the right way: HTTP `/health` for the FastAPI services, the gateway's
+    `/xiaozhi/ota/` (it has no `/health`), Ollama on `/`, **Redis via a TCP `PING`→`+PONG`**,
+    and n8n on `/healthz`. Three states (`up`/`down`/`n/a`) + a detail column.
+  - **Config validator** (read-only) — flags `${VAR}` referenced in compose but missing from
+    `.env` (hard finding for bare `${VAR}`, soft warning for `${VAR:-default}`).
+  - **Voices** — live character table from the orchestrator (F5-clip vs Parler split).
+  - **Workflow I/O** — last *N* n8n executions via the REST API.
+  - Writing config into running containers is intentionally out of scope.
+  - Added to `docker-compose.yml` with `net.unraid.docker.icon` + `net.unraid.docker.webui`
+    labels and read-only mounts of `docker-compose.yml` + `.env`.
+- **[Admin Console](docs/Admin-Console.md) wiki page** — full write-up; linked from the README,
+  Home, and the sidebar (new "Operate" section). Docker-Containers updated to 9 services.
 - **`docker/_admin.sh` icon-refresh script** — writes each container icon straight into
   *both* Unraid icon locations (the download cache and the GUI-served copy under
   `emhttp/state/...`), bypassing Unraid's refusal to overwrite an existing cached icon.
@@ -22,6 +40,12 @@ always reflects the project's true current status and the choices made.
 
 ### Changed
 - Refreshed container icons (chatterbox; new admin-console icon).
+
+### Notes
+- **n8n reachability:** the admin-console reaches n8n via the **public Cloudflare Tunnel base**
+  (`N8N_API_URL`), not the LAN IP — same macvlan↔bridge block the gateway hit. Set in the
+  gitignored `docker/.env`; `/healthz` lights the health probe with no key, `N8N_API_KEY`
+  additionally enables the Workflow I/O panel. Confirmed live.
 
 ## [0.4.1] - 2026-06-14
 ### Fixed

@@ -1,8 +1,8 @@
 # Docker Containers
 
-The stack is **8 containers** built from `docker/docker-compose.yml`, plus shared services: **Ollama** and **Redis** on the same `bumblebee_default` Docker network, and **n8n** on a separate Unraid macvlan (`br0`) interface (see the networking note below). All inference runs locally; nothing is sent to a cloud API.
+The stack is **9 containers** built from `docker/docker-compose.yml`, plus shared services: **Ollama** and **Redis** on the same `bumblebee_default` Docker network, and **n8n** on a separate Unraid macvlan (`br0`) interface (see the networking note below). All inference runs locally; nothing is sent to a cloud API.
 
-## The 8 services
+## The 9 services
 
 | Service | Container name | Port | GPU | Role |
 |---|---|---|---|---|
@@ -14,6 +14,7 @@ The stack is **8 containers** built from `docker/docker-compose.yml`, plus share
 | **audio-converter** | `audio-converter` | 5007 | — (CPU) | Converts MP3/MP4/OGG reference clips → WAV (with caching) |
 | **whisper-stt** | `whisper-stt` | 5009 | RTX 3090 | faster-whisper speech-to-text for ESP32 voice input |
 | **xiaozhi-gateway** | `xiaozhi-gateway` | 5010 (WS) + 5011 (OTA) | — (CPU) | ESP32 WebSocket server: Opus in/out, server-side VAD, calls Whisper + n8n; serves `/ota` device discovery on 5011 |
+| **admin-console** | `bumblebee-admin-console` | 5012 | — (CPU) | Operator web UI: stack health (workflow order), config validation, live voice table, n8n workflow I/O — see [Admin Console](Admin-Console.md) |
 
 **Shared services:** Ollama `:11434` and Redis `:6379` on `bumblebee_default`; **n8n `:5678` on macvlan `br0`** (LAN IP `192.168.1.47`).
 

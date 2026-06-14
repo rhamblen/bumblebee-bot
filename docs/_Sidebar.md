@@ -10,6 +10,9 @@
 - [Docker Containers](Docker-Containers)
 - [Unraid Template](Unraid-Template)
 
+**Operate**
+- [Admin Console](Admin-Console)
+
 **Voice in / out**
 - [STT Options](STT-Options)
 - [TTS Options](TTS-Options)

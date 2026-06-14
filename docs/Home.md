@@ -15,8 +15,12 @@ This wiki is the full write-up of how the system is built: a local, GPU-accelera
 
 ## Build & deploy
 
-- **[Docker Containers](Docker-Containers)** — the 8 services, the orchestrator API, building, publishing, and custom Unraid icons
+- **[Docker Containers](Docker-Containers)** — the 9 services, the orchestrator API, building, publishing, and custom Unraid icons
 - **[Unraid Template](Unraid-Template)** — install on Unraid, the shared Docker network, env vars, and volumes
+
+## Operate
+
+- **[Admin Console](Admin-Console)** — the operator web UI: stack health (in workflow order), config validation, the live voice table, and n8n workflow I/O
 
 ## Voice in / out
 
