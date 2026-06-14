@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docker/bumblebee-icon.png" alt="Bumblebee Bot" width="420">
+  <img src="docker/bumblebee-icon.png" alt="Bumblebee Bot" width="200">
 </p>
 
 # Bumblebee Bot
