@@ -81,6 +81,15 @@ How it works:
 2. They're hosted via the orchestrator's static server (copied to `media/bumblebee/generated/icons/`), reachable at the label URL.
 3. On `docker compose up -d --build`, Unraid fetches each label URL and caches it.
 
-**Gotcha:** Unraid won't overwrite an existing cached icon. To change an icon later, delete the stale `/var/lib/docker/unraid/images/<container>-icon.png` (or force-update the container) so it re-downloads.
+**Gotcha:** Unraid won't overwrite an existing cached icon, and it keeps **two** copies — the download cache at `/var/lib/docker/unraid/images/<container>-icon.png` *and* the copy the GUI actually serves at `/usr/local/emhttp/state/plugins/dynamix.docker.manager/images/<container>-icon.png`. Because of this, simply replacing the source PNG (or even clearing the cache) often leaves a stale icon on screen: the served copy is never refreshed. The cache filename uses the **container** name, not the image name (e.g. `chatterbox-icon.png`, but `bumblebee-orchestrator-icon.png`).
+
+**`docker/_admin.sh` — the icon-refresh script.** To make icon swaps reliable, this script `curl`s each icon from the orchestrator's static server and writes it **straight into both directories**, bypassing Unraid's won't-overwrite logic entirely — so you never have to hunt down and delete stale cache files. It runs host-side via a one-time Unraid **User Scripts** entry named `bumblebee_admin` whose body is just:
+
+```bash
+#!/bin/bash
+bash /mnt/user/appdata/bumblebee-docker/_admin.sh
+```
+
+To change an icon: update `docker/bumblebee-<svc>-icon.png`, copy it to `media/bumblebee/generated/icons/` (what the label URL serves), run the `bumblebee_admin` script, then hard-refresh the Docker page (Ctrl+F5) to flush the browser image cache.
 
 See [Unraid Template](Unraid-Template.md) for one-click install.

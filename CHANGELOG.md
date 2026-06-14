@@ -10,6 +10,18 @@ dated, and pushed to GitHub along with any docs/Wiki updates — so the reposito
 always reflects the project's true current status and the choices made.
 
 ## [Unreleased]
+### Added
+- **Admin console container** (`docker/admin-console/`, port 5012) — web UI over the
+  orchestrator, with an optional n8n workflow I/O panel. Added to `docker-compose.yml`
+  with its `net.unraid.docker.icon` + `net.unraid.docker.webui` labels.
+- **`docker/_admin.sh` icon-refresh script** — writes each container icon straight into
+  *both* Unraid icon locations (the download cache and the GUI-served copy under
+  `emhttp/state/...`), bypassing Unraid's refusal to overwrite an existing cached icon.
+  Run host-side via a one-time User Scripts entry (`bumblebee_admin`). See
+  [Docker-Containers](docs/Docker-Containers.md#custom-unraid-icons).
+
+### Changed
+- Refreshed container icons (chatterbox; new admin-console icon).
 
 ## [0.4.1] - 2026-06-14
 ### Fixed

@@ -117,6 +117,32 @@ services:
     volumes:
       - /mnt/user/appdata/whisper-stt/models:/whisper-models
 
+  admin-console:
+    build: ./admin-console
+    container_name: bumblebee-admin-console
+    restart: unless-stopped
+    labels:
+      net.unraid.docker.icon: "http://192.168.1.33:5005/files/icons/bumblebee-admin-console-icon.png"
+      net.unraid.docker.webui: "http://[IP]:[PORT:5012]/"
+    environment:
+      - ORCHESTRATOR_URL=http://bumblebee-orchestrator:5005
+      # n8n REST API for the workflow I/O panel. Leave blank to disable that panel.
+      # Macvlan caveat: the LAN IP (192.168.1.47:5678) is NOT reachable from this
+      # bridge network — set it only if this host has a route to n8n, else omit.
+      - N8N_API_URL=${N8N_API_URL:-}
+      - N8N_API_KEY=${N8N_API_KEY:-}
+      - N8N_WORKFLOW_ID=${N8N_WORKFLOW_ID:-ykVWvfFBHQpaC2h3}
+      - COMPOSE_PATH=/srv/docker-compose.yml
+      - ENV_PATH=/srv/.env
+    ports:
+      - "5012:5012"
+    volumes:
+      # Read-only mounts of the SAME source of truth the user builds from.
+      - ./docker-compose.yml:/srv/docker-compose.yml:ro
+      - ./.env:/srv/.env:ro
+    depends_on:
+      - orchestrator
+
   orchestrator:
     build: ./orchestrator
     container_name: bumblebee-orchestrator
