@@ -111,7 +111,7 @@ The README is the hook; everything below is written up in full under [`docs/`](d
 - **[Architecture & Workflow](docs/Architecture-and-Workflow.md)** — diagrams: pipeline, request lifecycle, multi-device topology
 - **[Docker Containers](docs/Docker-Containers.md)** — the 9 services, building, publishing, and custom Unraid icons
 - **[Unraid Template](docs/Unraid-Template.md)** — Community Apps install + env vars
-- **[Admin Console](docs/Admin-Console.md)** — the operator web UI: stack health, config validation, voice table, n8n workflow I/O
+- **[Admin Console](docs/Admin-Console.md)** — the operator web UI: stack health, `.env` config editor with drift detection, voice table, n8n workflow I/O
 - **[STT Options](docs/STT-Options.md)** — speech-to-text choices and how to swap them
 - **[TTS Options](docs/TTS-Options.md)** — engine comparison and when to use each
 - **[Voice Input: Alexa → ESP32/Xiaozhi](docs/Voice-Input-Alexa-vs-ESP32.md)** — what we tried, what didn't work, and your options

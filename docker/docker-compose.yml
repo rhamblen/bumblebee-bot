@@ -137,9 +137,13 @@ services:
     ports:
       - "5012:5012"
     volumes:
-      # Read-only mounts of the SAME source of truth the user builds from.
+      # compose stays read-only (validator reads it); .env is read-write so the
+      # Config tab can save edits to the values it sources from .env.
       - ./docker-compose.yml:/srv/docker-compose.yml:ro
-      - ./.env:/srv/.env:ro
+      - ./.env:/srv/.env:rw
+      # read-only docker socket: lets the Config tab compare each container's
+      # RUNNING env against .env/compose and flag "needs recreate" (drift check).
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     depends_on:
       - orchestrator
 

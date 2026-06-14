@@ -11,6 +11,35 @@ always reflects the project's true current status and the choices made.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-06-14
+### Added
+- **Admin console — Config tab drift check ("needs recreate")**. Env is interpolated at
+  container *create* time, so editing `.env` doesn't reach a running process until it's
+  recreated. The tab now compares each service's expected value (compose, `${VAR}` resolved
+  from `.env`) against the value the container is **actually running** (its Docker
+  `Config.Env`, read over a **read-only `/var/run/docker.sock`** mount), and flags drift:
+  a red banner listing the affected containers, plus an inline "⚠ running: … — recreate to
+  apply" badge on each stale field. Covers the whole stack (`GET /api/drift`). Secrets masked.
+  Degrades gracefully to "drift check unavailable" if the socket isn't mounted.
+- **Admin console — Config tab is now an editable `.env` surface** (Phase 1). It walks
+  every service's compose `environment:` block and shows each variable grouped by
+  container, with its **resolved value** and **source** (`.env` / `default` / `compose`):
+  - Variables compose references as `${VAR}` / `${VAR:-default}` are **editable** and
+    saved back to `.env` (`POST /api/env`); bare compose literals are shown **read-only**
+    (convert to `${VAR}` to make them editable, one section at a time).
+  - **Secrets** (`N8N_API_KEY`, `OTA_WS_TOKEN`, …) are masked in transit and a write
+    carrying the mask back is treated as "unchanged"; the writer preserves all other
+    lines/comments in `.env`. The validator findings remain on the tab.
+  - Directly unblocks setting **`N8N_API_KEY`** (and `N8N_API_URL` / `N8N_WORKFLOW_ID` /
+    `N8N_WEBHOOK_URL`) from the UI for the Workflow I/O panel.
+### Fixed
+- Config validator no longer scans `#` comment lines — a `${VAR}` mentioned in a compose
+  comment was wrongly flagged as referenced-but-undefined (compose never interpolates comments).
+### Changed
+- `admin-console` mounts `.env` **read-write** (`docker-compose.yml`) so the Config tab
+  can save; `docker-compose.yml` stays read-only (validator only). Changes still take
+  effect the normal build way — recreate the affected container(s).
+
 ## [0.5.0] - 2026-06-14
 ### Added
 - **Admin console** (`docker/admin-console/`, port 5012) — a read-mostly operator web UI

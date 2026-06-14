@@ -28,6 +28,81 @@ Two NVIDIA cards, assigned via `NVIDIA_VISIBLE_DEVICES`:
 
 > The 3060 is shared by three TTS engines, so heavy concurrent use can cause contention. If you have one GPU, set every `NVIDIA_VISIBLE_DEVICES` to `0` and expect serialized rendering.
 
+## Environment variable reference
+
+These are the variables declared in each service's compose `environment:` block — i.e. exactly what the admin console's [**Config** tab](Admin-Console.md#config-tab-validator--env-editor) lists. All are read at container **start**, so a change applies on the next recreate.
+
+**Editable** marks whether the Config tab can write the value: it can only do so when compose sources the variable from `.env` as `${VAR}` / `${VAR:-default}`. A bare literal (`FOO=http://x`) is shown read-only until you convert it to `${FOO:-http://x}` in compose. Secrets are masked in the UI.
+
+### Shared connection URLs (orchestrator, gateway, admin-console)
+
+| Variable | Meaning | Format | Default | Editable |
+|---|---|---|---|---|
+| `ORCHESTRATOR_URL` | Base URL of the orchestrator (gateway + admin-console call it) | `http://host:port` | `http://bumblebee-orchestrator:5005` | literal |
+| `WHISPER_URL` | STT endpoint the gateway calls | `http://host:port` | `http://whisper-stt:5009` | literal |
+| `F5_TTS_URL` / `PARLER_TTS_URL` / `COQUI_TTS_URL` / `CHATTERBOX_URL` | The four TTS engine endpoints the orchestrator routes to | `http://host:port` | `http://<svc>:500{3,4,2,6}` | literal |
+| `AUDIO_CONVERTER_URL` | Reference-clip → WAV converter | `http://host:port` | `http://audio-converter:5007` | literal |
+
+> These are Docker-network hostnames on `bumblebee_default`; only change them if you move a service off the network or rename it.
+
+### xiaozhi-gateway
+
+| Variable | Meaning | Format / values | Default | Editable |
+|---|---|---|---|---|
+| `N8N_WEBHOOK_URL` | Public HTTPS webhook the gateway POSTs transcribed text to (the n8n "brain"). **Blank = orchestrator-direct test mode** (Parler, no n8n). Must be the **tunnel** URL, not the LAN IP (macvlan blocks it). | `https://<tunnel>/webhook/bumblebee` or blank | *(blank)* | **yes** |
+| `OTA_WS_URL` | WebSocket URL handed to the ESP32 (QT) at OTA boot so it knows where to stream audio. Must be **LAN-reachable by the device** — use the host IP, not the docker hostname. | `ws://<lan-host>:5010/xiaozhi/v1/` | `ws://192.168.1.33:5010/xiaozhi/v1/` | literal |
+| `OTA_WS_TOKEN` | Shared token the device presents on the WS connection. | string (secret) | `bumblebee-test` | literal |
+
+### whisper-stt
+
+| Variable | Meaning | Format / values | Default | Editable |
+|---|---|---|---|---|
+| `WHISPER_MODEL` | faster-whisper model size. Bigger = more accurate, slower, more VRAM. Swapping reloads weights. | `tiny`/`base`/`small`/`medium`/`large-v3` (+ `.en` English-only, e.g. `base.en`) | `base` | literal |
+| `WHISPER_LANGUAGE` | Pin transcription language. Blank = auto-detect. | ISO code, e.g. `en` | `en` | literal |
+| `WHISPER_MODEL_DIR` | Model cache dir inside the container (persistent volume). | path | `/whisper-models` | literal |
+
+### admin-console
+
+| Variable | Meaning | Format / values | Default | Editable |
+|---|---|---|---|---|
+| `N8N_API_URL` | n8n REST API base for the Workflow I/O panel + n8n health probe. The **tunnel** base, not the LAN IP. Blank = panel/probe show `n/a`. | `https://<tunnel>` or blank | *(blank)* | **yes** |
+| `N8N_API_KEY` | n8n REST API key (n8n → Settings → API). Enables the Workflow I/O panel. | string (secret) | *(blank)* | **yes** |
+| `N8N_WORKFLOW_ID` | Scopes the executions shown to one workflow. Found in the n8n editor URL. | id string | `ykVWvfFBHQpaC2h3` | **yes** |
+| `COMPOSE_PATH` / `ENV_PATH` | Internal — where the console reads compose / writes `.env`. Don't change. | path | `/srv/docker-compose.yml`, `/srv/.env` | literal |
+
+### orchestrator
+
+| Variable | Meaning | Format / values | Default | Editable |
+|---|---|---|---|---|
+| `PUBLIC_BASE_URL` | Externally-reachable base URL players (Sonos) use to **fetch rendered audio**. Must be LAN-reachable by the playback device. | `http://<lan-host>:5005/files` | `http://192.168.1.33:5005/files` | literal |
+| `MEDIA_DIR` | Where rendered WAVs are written. | path | `/media/generated` | literal |
+| `DESCRIPTOR_PATH` | The live character/voice table. | path | `/media/character_descriptor.json` | literal |
+| `REFERENCES_DIR` | Reference clips dir. | path | `/media/references` | literal |
+
+### TTS engines (f5-tts, parler-tts, coqui-tts, chatterbox)
+
+| Variable | Meaning | Format / values | Default | Editable |
+|---|---|---|---|---|
+| `NVIDIA_VISIBLE_DEVICES` | GPU index(es) exposed to the container — the one value worth re-tuning. | `0` (3060) / `1` (3090) / `0,1` / `all` | per [GPU split](#gpu-split) | literal |
+| `HF_HOME` (f5/parler/chatterbox) / `COQUI_TTS_HOME` (coqui) | Model cache dir (persistent volume). | path | `/tts-models` | literal |
+| `COQUI_TOS_AGREED` (coqui) | Accept the XTTS license non-interactively — required for the model to load. | `1` | `1` | literal |
+
+> **audio-converter** has no env vars.
+
+### Additional tuning variables (in code, **not** in compose)
+
+These are read by the services with sensible defaults but aren't declared in `docker-compose.yml`, so they **don't appear in the Config tab** yet. To surface/edit one, add it to that service's compose `environment:` as `${VAR:-default}`.
+
+| Service | Variable | Default | Meaning |
+|---|---|---|---|
+| xiaozhi-gateway | `VAD_AGGRESSIVENESS` | `2` | webrtcvad level 0–3; higher = filters more non-speech |
+| | `SILENCE_END_MS` | `800` | trailing silence that ends an utterance |
+| | `MIN_SPEECH_MS` | `300` | ignore blips shorter than this |
+| | `MAX_UTTERANCE_MS` | `15000` | hard cap so a noisy room can't run away |
+| | `OTA_PORT` | `5011` | OTA/discovery HTTP port |
+| orchestrator | `TTS_RETRIES` | `1` | extra attempts after a transient TTS failure |
+| | `TTS_RETRY_BACKOFF` | `1.5` | seconds between attempts |
+
 ## The orchestrator API
 
 FastAPI. Key routes:
@@ -41,7 +116,7 @@ FastAPI. Key routes:
 | `GET` | `/health` | Liveness |
 | `GET` | `/files/<uuid>.wav` | Static serving of rendered audio (this is what Sonos fetches) |
 
-Key env vars (see compose): `F5_TTS_URL`, `PARLER_TTS_URL`, `COQUI_TTS_URL`, `CHATTERBOX_URL`, `AUDIO_CONVERTER_URL`, `MEDIA_DIR=/media/generated`, `PUBLIC_BASE_URL`, `DESCRIPTOR_PATH=/media/character_descriptor.json`, `REFERENCES_DIR=/media/references`, `TTS_RETRIES=1` (extra attempts on a transient TTS failure), `TTS_RETRY_BACKOFF=1.5` (seconds between attempts).
+Env vars are documented in the [Environment variable reference](#environment-variable-reference) above.
 
 ## Building locally
 
