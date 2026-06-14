@@ -15,6 +15,11 @@ always reflects the project's true current status and the choices made.
   is now a complete, ready-to-publish mirror of the GitHub Wiki.
 - `scripts/mirror_wiki.py` — one-command sync of `docs/` → the GitHub Wiki (rewrites
   internal `*.md` links to wiki form). Run once the wiki's first page exists.
+- `LICENSE` — MIT. README license section notes that bundled third-party TTS/STT models
+  keep their own terms (e.g. Coqui XTTS is non-commercial CPML).
+
+### Changed
+- Repository made **public** on GitHub.
 
 ## [0.2.0] - 2026-06-14
 ### Added

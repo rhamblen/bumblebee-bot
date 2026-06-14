@@ -121,4 +121,6 @@ The core pipeline is **working end-to-end**: text/voice in → mood → 1–3 ch
 
 ## License
 
-To be decided before this repository is made public.
+This project's own code and documentation are released under the **[MIT License](LICENSE)** — use, modify, and distribute freely, including commercially, as long as the copyright notice is kept.
+
+> **Third-party models keep their own licenses.** The TTS/STT engines this project orchestrates (F5-TTS, Parler-TTS, Coqui XTTS v2, Chatterbox, Whisper) are separate works under their own terms — notably **Coqui XTTS v2 ships under the non-commercial CPML**. Check each engine's license before any commercial use. MIT covers this repository's glue/orchestration, not the bundled models or any reference audio you supply.
