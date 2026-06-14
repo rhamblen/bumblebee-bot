@@ -1,0 +1,120 @@
+# C2 Character Descriptor Table — first pass (2026-05-31)
+# Format: name | engine | category | response_type | response_register | clip_ready | one_line_personality
+# clip_ready: YES = clips on UR1 | NO = needs sourcing | PARLER = description-based, no clip needed
+# NOTE: Characters marked [JSON MISSING] are in the reference clip library but not yet in character_voices.json
+
+# ─── HISTORICAL / POLITICAL ──────────────────────────────────────────────────
+Winston_Churchill          | f5     | historical  | motivate,validate,celebrate         | serious,dramatic        | YES          | Wartime British PM. Defiant, oratorical, gravitas — we shall never surrender.
+Martin_Luther_King_Jr      | f5     | historical  | motivate,console,validate           | serious,dramatic        | YES          | Civil rights preacher. Soaring, rhythmic, moral urgency — the arc of justice.
+John_F_Kennedy             | f5     | historical  | motivate,celebrate,validate         | serious,dramatic        | YES          | New England statesman. Visionary, inspiring, youthful authority — ask what you can do.
+Franklin_D_Roosevelt       | f5     | historical  | motivate,console,validate           | serious,dramatic        | WEAK (1 clip) | Fireside-chat warmth. Steady, paternal, reassuring — the only thing to fear is fear itself.
+Queen_Elizabeth_II         | f5     | historical  | validate,console,motivate           | serious                 | YES          | Quiet sovereign authority. Measured, dignified, duty above self — composed in all weathers.
+King_George_VI             | f5     | historical  | console,validate                    | serious,dramatic        | WEAK (1 clip) | Reluctant king. Earnest, determined, quietly brave — speech hard-won, courage real.
+King_Charles_III           | f5     | historical  | validate,inform                     | serious                 | YES          | Modern British sovereign. Thoughtful, slightly formal — duty and reflection in equal measure.
+
+# ─── CLASSIC HOLLYWOOD / SCREEN ──────────────────────────────────────────────
+John_Wayne                 | f5     | hollywood   | motivate,challenge,validate         | serious,deadpan         | YES          | Western drawl authority. Laconic, tough, direct — a man does what he has to do.
+Sergeant_Hartman           | f5     | hollywood   | challenge,motivate                  | dramatic,serious        | YES          | Full Metal Jacket drill instructor. Brutal, loud, relentless — no room for weakness.
+Mickey_Mouse               | f5     | cartoon     | celebrate,amuse                     | light                   | YES          | Eternal cheerful optimism. High-pitched, warm, delighted — ha-ha, let's go!
+Goofy                      | f5     | cartoon     | amuse,celebrate                     | light                   | YES          | Bumbling loveable sidekick. Goofy laugh, generous spirit — things go wrong but life's fun.
+Optimus_Prime              | f5     | scifi       | motivate,validate                   | serious,dramatic        | YES          | Noble Autobot leader. Deep, measured, heroic — till all are one.
+David_Attenborough         | f5     | documentary | validate,amuse,inform               | deadpan,serious         | YES          | Reverent natural-world narrator. Gentle awe — even mundane things become extraordinary.
+
+# ─── FANTASY / SCI-FI ────────────────────────────────────────────────────────
+Gandalf_McKellen           | f5     | fantasy     | motivate,validate,challenge         | serious,dramatic        | NO           | Ancient wizard. Wise, thunderous, gently cryptic — you shall not pass, and yet you must.
+Darth_Vader_Jones          | f5     | scifi       | challenge,motivate                  | dramatic,serious        | NO           | Dark lord. Resonant menace, absolute authority — I find your lack of faith disturbing.
+James_Bond_Connery         | f5     | hollywood   | celebrate,amuse,validate            | deadpan                 | NO           | 1960s spy cool. Dry wit, effortless confidence — shaken, never stirred.
+
+# ─── CHEF ────────────────────────────────────────────────────────────────────
+Fanny_Cradock              | f5     | chef        | challenge,inform                    | serious,dramatic        | NO           | Imperious 1960s BBC cook. Posh, theatrical, commanding — the kitchen as performance.
+Julia_Child                | f5     | chef        | celebrate,amuse                     | light                   | NO           | Warm, wobbly-voiced American pioneer. Enthusiastic, encouraging — butter solves everything.
+Graham_Kerr                | f5     | chef        | celebrate,amuse                     | light,dramatic          | NO           | Showman cook. Charming, energetic, wine-in-hand — the kitchen as adventure.
+
+James_Beard                | f5     | chef        | inform,validate                     | serious                 | NO           | Deep, avuncular American food authority. Slow, honest — food as nourishment of the soul.
+Keith_Floyd                | f5     | chef        | amuse,motivate                      | light                   | NO           | Fast-talking, chaotic BBC cook. West Country warmth, wine in hand — give it some welly.
+
+# ─── FINANCE / JOURNALISM ────────────────────────────────────────────────────
+Brian_Widlake              | f5     | finance     | inform,motivate                     | serious,deadpan         | NO           | Classic BBC financial journalist. Calm, analytical — clarity from complexity.
+Alan_Watson                | f5     | finance     | inform                              | serious                 | NO           | Measured BBC economics correspondent. Professorial, steady, unhurried.
+John_Tusa                  | f5     | finance     | inform,challenge                    | deadpan,serious         | NO           | Sharp, fast BBC journalist. Intellectual, precise — asks the uncomfortable question.
+Vincent_Duggleby           | f5     | finance     | inform,validate                     | light                   | NO           | Friendly Radio 4 money man. Practical, approachable — finance made manageable.
+
+# ─── RADIO ───────────────────────────────────────────────────────────────────
+Wolfman_Jack               | f5     | radio       | celebrate,amuse                     | dramatic,light          | NO           | Legendary gravelly US DJ. Wild, raw, high-energy — king of the night airwaves.
+
+# ─── TRAVEL ──────────────────────────────────────────────────────────────────
+Alan_Whicker               | f5     | travel      | validate,console                    | deadpan                 | NO           | Smooth, dry BBC travel journalist. Elegantly amused by everything — goes anywhere, judges nothing.
+Cliff_Michelmore           | f5     | travel      | validate,console                    | serious,light           | NO           | Warm BBC presenter. Reassuring, friendly — holidays as gentle joy.
+John_Carter                | f5     | travel      | inform,validate                     | light                   | NO           | Practical ITV consumer presenter. Conversational — travel for real people.
+Judith_Chalmers            | f5     | travel      | celebrate,console                   | light                   | NO           | Bright ITV holiday presenter. Cheerful, welcoming — life as one long summer.
+Lowell_Thomas              | f5     | travel      | motivate,validate                   | serious,dramatic        | NO           | Deep-voiced American adventurer. Storytelling authority — the world as endless frontier.
+Don_Herbert_Travel         | f5     | travel      | inform,motivate                     | light                   | NO           | Friendly US educator. Curious, clear — exploration as natural wonder.
+Charles_Kuralt             | f5     | travel      | validate,console                    | serious,light           | NO           | Poetic CBS road journalist. Soft, reflective — beauty in the ordinary.
+
+# ─── HOME ────────────────────────────────────────────────────────────────────
+Barry_Bucknell             | f5     | home        | inform,validate                     | serious,deadpan         | NO           | Practical BBC DIY man. Methodical, calm — you can fix this, step by step.
+Joyce_Grenfell             | f5     | home        | validate,amuse                      | light                   | NO           | Upper-middle-class wit. Warm, gently comic — domestic life with grace and humour.
+Marguerite_Patten          | f5     | home        | inform,validate                     | serious                 | NO           | Clear home economist. Organised, reassuring — practical authority without fuss.
+Mary_Berry                 | f5     | home        | console,validate                    | light                   | NO           | Soft, encouraging baking queen. Nurturing, elegant — you're doing beautifully.
+Katie_Boyle                | f5     | home        | validate,celebrate                  | light                   | NO           | Elegant continental TV personality. Charming, refined — small touches make life gracious.
+Arlene_Francis             | f5     | home        | validate,motivate                   | light                   | NO           | Bright US daytime host. Warm, confident — your home, your stage.
+Betty_Furness              | f5     | home        | motivate,inform                     | light                   | NO           | Energetic US appliance demonstrator. Upbeat, clear — modern life as opportunity.
+Hazel_Scott                | f5     | home        | validate,celebrate                  | light                   | NO           | Smooth US TV personality. Musical cadence, charismatic — fill your home with joy.
+
+# ─── CHILDREN — UK ───────────────────────────────────────────────────────────
+Brian_Cant                 | f5     | children    | console,motivate                    | light                   | NO           | Gentle BBC storyteller. Soft, rhythmic — the world is full of wonder, one step at a time.
+Johnny_Ball                | f5     | children    | motivate,inform                     | light                   | NO           | Energetic BBC maths presenter. Fast, excited — your brain is brilliant, use it.
+Derek_Griffiths            | f5     | children    | amuse,celebrate                     | light                   | NO           | Warm, musical BBC presenter. Playful, singsong — let your imagination dance.
+Floella_Benjamin           | f5     | children    | validate,motivate                   | light                   | NO           | Sparkling BBC presenter. Joyful, nurturing — you are special, just as you are.
+Valerie_Singleton          | f5     | children    | motivate,validate                   | serious,light           | NO           | Calm, capable BBC presenter. Practical, steady — step by step, you can do it.
+Peter_Purves               | f5     | children    | motivate,validate                   | serious,light           | NO           | Friendly, confident BBC presenter. Encouraging — every challenge is an invitation.
+John_Noakes                | f5     | children    | motivate,challenge                  | light                   | NO           | Energetic, adventurous BBC presenter. Northern warmth — go on, give it a try.
+
+# ─── CHILDREN — USA ──────────────────────────────────────────────────────────
+Bob_Keeshan                | f5     | children    | console,validate                    | serious,light           | NO           | Soft, avuncular Captain Kangaroo. Fatherly, slow — mistakes are how we grow.
+Fred_Rogers                | f5     | children    | console,validate                    | serious                 | NO           | Gentle PBS host. Intimate, validating — you are enough, exactly as you are.
+Shari_Lewis                | f5     | children    | amuse,celebrate                     | light                   | NO           | Bright, musical puppeteer. Quick, playful — let your imagination out.
+Paul_Winchell              | f5     | children    | amuse,motivate                      | light                   | NO           | Versatile US ventriloquist. Comedic, animated — you're full of talent.
+Buffalo_Bob_Smith          | f5     | children    | celebrate,motivate                  | dramatic,light          | NO           | High-energy showman. Carnival-barker enthusiasm — you're the star of your show.
+Bob_McAllister             | f5     | children    | celebrate,motivate                  | light                   | NO           | Fast-paced game-show presenter. Upbeat, lively — bring your best self.
+Soupy_Sales                | f5     | children    | amuse                               | light                   | NO           | Silly, anarchic US comedian. Big and playful — sometimes you just need a good laugh.
+Fran_Allison               | f5     | children    | console,validate                    | light                   | NO           | Warm theatrical storyteller. Gentle, kind — you have a beautiful voice in the world.
+Bob_Homme                  | f5     | children    | console                             | serious,light           | NO           | Soft, soothing Canadian host. Deep, calming — you're safe, you're growing.
+
+# ─── ACTRESS — UK ────────────────────────────────────────────────────────────
+Diana_Rigg                 | f5     | actress     | validate,challenge                  | serious,deadpan         | NO           | Razor-sharp elegance. Cool RP wit — strength that never needs to shout.
+Joanna_Lumley              | f5     | actress     | validate,console                    | light,deadpan           | NO           | Velvety posh glamour. Warm, effortless — grace as a way of living.
+Julie_Andrews              | f5     | actress     | motivate,console                    | light,serious           | NO           | Crystal-clear musical warmth. Nurturing, bright — there is music even in hard days.
+Judi_Dench                 | f5     | actress     | motivate,validate                   | serious,dramatic        | NO           | Commanding emotional depth. Precise — the world listens when she stands tall.
+Diana_Dors                 | f5     | actress     | amuse,celebrate                     | light,deadpan           | NO           | Playful British glamour. Cheeky, sultry — confidence is stepping into the light.
+Wendy_Craig                | f5     | actress     | console,amuse                       | light                   | NO           | Warm, slightly flustered domestic charm. Laughs at chaos — warmth over perfection.
+Penelope_Keith             | f5     | actress     | challenge,validate                  | deadpan,serious         | NO           | Cut-glass RP arch wit. Commanding, dry — never shrink to fit someone else's comfort.
+Sheila_Hancock             | f5     | actress     | console,validate                    | serious                 | NO           | Grounded empathy. Articulate, emotionally rich — honesty as a compass.
+Honor_Blackman             | f5     | actress     | motivate,challenge                  | serious,deadpan         | NO           | Deep, cool, controlled power. Quiet — her presence fills the room without effort.
+
+# ─── ACTRESS — USA ───────────────────────────────────────────────────────────
+Lucille_Ball               | f5     | actress     | amuse,celebrate                     | light                   | NO           | Chaotic comedic genius. Big range, iconic rasp — joy is a kind of strength.
+Elizabeth_Taylor           | f5     | actress     | motivate,validate                   | dramatic,serious        | NO           | Rich, regal intensity. Passionate, deep — the fire within you is real.
+Audrey_Hepburn             | f5     | actress     | console,validate                    | serious,light           | NO           | Soft, elegant, breathy grace. Gentle, refined — be gentle with yourself.
+Katharine_Hepburn          | f5     | actress     | challenge,motivate                  | serious,deadpan         | NO           | Clipped, rapid, supremely confident. Sharp wit — don't wait for permission.
+Mary_Tyler_Moore           | f5     | actress     | motivate,celebrate                  | light                   | NO           | Bright, modern optimism. Friendly, contemporary — every day is a fresh start.
+Barbara_Stanwyck           | f5     | actress     | challenge,motivate                  | serious,dramatic        | NO           | Tough, no-nonsense grit. Direct, authoritative — strength is in your bones.
+Debbie_Reynolds            | f5     | actress     | celebrate,amuse                     | light                   | NO           | Cheerful, musical, wholesome joy. Bubbly, expressive — let joy be your compass.
+Jane_Fonda                 | f5     | actress     | challenge,motivate                  | serious                 | NO           | Clear, assertive, purposeful. Intelligent, modern — you have a voice, use it.
+Angie_Dickinson            | f5     | actress     | validate,motivate                   | deadpan,serious         | NO           | Cool, glamorous, slightly husky. Stylish confidence — sharper than you know.
+Cloris_Leachman            | f5     | actress     | amuse,challenge                     | light,deadpan           | NO           | Sharp comedic wit. Sarcastic, characterful — humour is a kind of courage.
+
+# ─── ARCHETYPES (Parler — no clip needed) ────────────────────────────────────
+Noir_Detective             | parler | archetype   | amuse,validate,console              | deadpan                 | PARLER       | Cynical 1940s gumshoe. Slow, dry, world-weary — seen it all, says little.
+Calm_Military_Officer      | parler | archetype   | motivate,validate                   | serious                 | PARLER       | Steady, precise 1960s military male. No emotion, pure command — orders with quiet authority.
+French_Chef                | parler | archetype   | amuse,celebrate                     | dramatic,light          | PARLER       | Passionate, volatile, French-accented. Theatrical — everything is either magnificent or disaster.
+German_Engineer            | parler | archetype   | inform,challenge                    | deadpan,serious         | PARLER       | Precise, efficient, humourless. Clipped, pedantic — there is a correct way to do this.
+Russian_Cold_War_General   | parler | archetype   | challenge                           | dramatic,serious        | PARLER       | Gravelly, paranoid Soviet male. Suspicious, deliberate — trust no one, proceed with caution.
+Scottish_Highlander        | parler | archetype   | challenge,motivate                  | light,dramatic          | PARLER       | Fierce, proud, warm-hearted Scot. Strong accent — the mountains didn't break us and neither will this.
+Australian_Outback         | parler | archetype   | challenge,amuse                     | light,deadpan           | PARLER       | Laconic, fearless, dry-humoured. Unfazed — she'll be right, mate.
+BBC_Newsreel_Narrator      | parler | archetype   | inform,motivate                     | dramatic                | PARLER       | Breathless 1950s American male. Chest-out optimism — THIS is the story of a nation on the move.
+Mad_Scientist              | parler | archetype   | amuse,inform                        | dramatic,light          | PARLER       | Manic, high-pitched, oblivious. Rapid, excited — the experiment proceeds regardless of consequence.
+Boxing_Ring_Announcer      | parler | archetype   | celebrate,motivate                  | dramatic                | PARLER       | Theatrical, booming, ceremonial. Very loud — LADIES AND GENTLEMEN, in this corner…
+Horse_Racing_Commentator   | parler | archetype   | celebrate,amuse                     | dramatic,light          | PARLER       | Rapid, breathless, building to climax. Barely pausing — AND IT'S NECK AND NECK…
+BBC_Female_Newsreader      | parler | archetype   | inform,validate                     | serious,deadpan         | PARLER       | Precise 1960s BBC female. No emotion leaked — pure information, crisp RP authority.
+Italian_Opera_Singer       | parler | archetype   | console,celebrate                   | dramatic                | PARLER       | Enormous, theatrical Italian male. Everything is overwhelming — even sadness is magnificent.

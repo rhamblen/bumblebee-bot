@@ -1,0 +1,25 @@
+# Secrets / environment
+.env
+docker/.env
+**/.env
+.claude/settings.local.json
+n8n_api_key.txt
+cookies.txt
+**/cookies.txt
+*.ovpn
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Large media / generated audio (add specific demos with `git add -f` if wanted)
+demo_renders/
+*.wav
+*.mp3
+*.mp4
+*.ogg
+
+# OS / editor cruft
+Thumbs.db
+.DS_Store

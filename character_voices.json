@@ -1,0 +1,1339 @@
+{
+  "ffmpeg_presets": {
+    "bbc_1950s_radio": "highpass=f=120,lowpass=f=3500,acompressor=threshold=-20dB:ratio=3:attack=5:release=50,aphaser=delay=2:decay=0.4,volume=1.2",
+    "bbc_1960s_mono": "highpass=f=120,lowpass=f=3500,acompressor=threshold=-20dB:ratio=3:attack=5:release=50,aphaser=delay=2:decay=0.4,volume=1.2",
+    "bbc_1960s_documentary": "highpass=f=100,lowpass=f=5000,acompressor=threshold=-20dB:ratio=3,volume=1.1",
+    "bbc_1960s_current_affairs": "highpass=f=100,lowpass=f=4000,acompressor=threshold=-22dB:ratio=4:attack=8:release=60,volume=1.1",
+    "bbc_1970s_colour_tv": "acompressor=threshold=-18dB:ratio=2.5:attack=10:release=80,highpass=f=80,lowpass=f=8000,aecho=0.8:0.88:60:0.4",
+    "itv_1970s_colour_tv": "acompressor=threshold=-18dB:ratio=2.5,highpass=f=80,lowpass=f=8000",
+    "pbs_1960s_tv": "acompressor=threshold=-18dB:ratio=2:attack=10:release=80,highpass=f=80,lowpass=f=7000,volume=1.1",
+    "am_radio_1960s": "acompressor=threshold=-25dB:ratio=6:attack=2:release=100,highpass=f=300,lowpass=f=2800,volume=1.4",
+    "american_radio_1950s": "highpass=f=200,lowpass=f=3000,acompressor=threshold=-25dB:ratio=4",
+    "cbs_field_1970s": "acompressor=threshold=-20dB:ratio=2,highpass=f=60,lowpass=f=9000,aecho=0.6:0.7:40:0.2,volume=1.0",
+    "educational_tv_1960s": "highpass=f=100,lowpass=f=6000,acompressor=threshold=-20dB:ratio=2.5,volume=1.0",
+    "bbc_home_1950s": "highpass=f=120,lowpass=f=3800,acompressor=threshold=-22dB:ratio=3,volume=1.1",
+    "nbc_daytime_1960s": "acompressor=threshold=-18dB:ratio=2.5,highpass=f=100,lowpass=f=7500",
+    "itv_magazine_1970s": "highpass=f=80,lowpass=f=8000,aecho=0.6:0.7:45:0.3",
+    "american_variety_1950s": "highpass=f=150,lowpass=f=4000,acompressor=threshold=-22dB:ratio=3:attack=6:release=60,volume=1.2",
+    "bbc_children_1970s": "highpass=f=120,lowpass=f=5500,acompressor=threshold=-20dB:ratio=3:attack=5:release=80,volume=1.1",
+    "pbs_children_1960s": "highpass=f=100,lowpass=f=5000,acompressor=threshold=-22dB:ratio=2.5:attack=10:release=120,volume=1.05",
+    "us_kids_live_1950s": "highpass=f=200,lowpass=f=3200,acompressor=threshold=-25dB:ratio=4:attack=3:release=100,volume=1.2",
+    "us_kids_studio_1970s": "highpass=f=80,lowpass=f=8000,acompressor=threshold=-18dB:ratio=2.5:attack=8:release=90,volume=1.1",
+    "bbc_drama_1970s": "highpass=f=120,lowpass=f=8000,acompressor=threshold=-20dB:ratio=2.5,volume=1.1",
+    "hollywood_1960s": "highpass=f=150,lowpass=f=6000,acompressor=threshold=-22dB:ratio=3",
+    "us_sitcom_1970s": "highpass=f=100,lowpass=f=9000,acompressor=threshold=-18dB:ratio=2"
+  },
+  "voices": [
+    {
+      "name": "Fanny_Cradock",
+      "category": "chef",
+      "country": "UK",
+      "era": "1950s-1970s",
+      "voice_archetype": "Posh, theatrical, commanding BBC RP accent. Sharp consonants, clipped vowels, dramatic flourishes.",
+      "sample_script": "Now listen closely, dears. Cooking is not merely the act of feeding oneself — it is the art of transforming the ordinary into the extraordinary. When you step into your kitchen, you step into your own little theatre. Stand tall, take command, and remember: confidence is the finest seasoning of all. Now, chin up — let us create something truly splendid.",
+      "audio_style": "1960s BBC mono, narrow bandwidth, slight tape hiss, gentle room reverb.",
+      "ffmpeg_preset": "bbc_1960s_mono",
+      "sample_rate": 16000,
+      "channels": 1
+    },
+    {
+      "name": "Julia_Child",
+      "category": "chef",
+      "country": "USA",
+      "era": "1960s-1970s",
+      "voice_archetype": "Warm, enthusiastic, high-pitched, slightly wobbly vibrato. Friendly and encouraging.",
+      "sample_script": "Cooking should be a celebration, not a chore! Even if your soufflé falls or your sauce misbehaves, you've still learned something wonderful. So take a deep breath, smile, and keep going. You're doing marvelously, and with a little butter and a little courage, you can make anything delicious.",
+      "audio_style": "1960s PBS TV, soft tape compression, warm midrange.",
+      "ffmpeg_preset": "pbs_1960s_tv",
+      "sample_rate": 22050,
+      "channels": 1
+    },
+    {
+      "name": "Graham_Kerr",
+      "category": "chef",
+      "country": "UK/NZ/USA",
+      "era": "1960s-1970s",
+      "voice_archetype": "Charming, humorous, energetic, showman-like delivery with a polished mid-Atlantic accent.",
+      "sample_script": "Ladies and gentlemen, today is your day to try something bold! Don't tiptoe around your ingredients — embrace them with gusto. Cooking is an adventure, and every adventure needs a little daring. So pour that wine, turn up the heat, and let's make something that brings joy to the table and a spark to your spirit.",
+      "audio_style": "1970s American TV, bright EQ, mild saturation.",
+      "ffmpeg_preset": "bbc_1970s_colour_tv",
+      "sample_rate": 22050,
+      "channels": 1
+    },
+    {
+      "name": "James_Beard",
+      "category": "chef",
+      "country": "USA",
+      "era": "1950s-1970s",
+      "voice_archetype": "Deep, authoritative, avuncular tone. Slow, confident pacing.",
+      "sample_script": "Good food comes from honesty — honest ingredients, honest effort, honest pleasure. When you cook, you're not just preparing a meal; you're offering a piece of yourself. So take your time, breathe deeply, and let your heart guide your hands. The simplest dishes, made with care, can nourish the soul.",
+      "audio_style": "1950s American radio, warm low-end, soft hiss.",
+      "ffmpeg_preset": "bbc_1950s_radio",
+      "sample_rate": 16000,
+      "channels": 1
+    },
+    {
+      "name": "Keith_Floyd",
+      "category": "chef",
+      "country": "UK",
+      "era": "1970s",
+      "voice_archetype": "Fast-talking, witty, slightly chaotic, wine-in-hand charm. Light West Country influence.",
+      "sample_script": "Right then! Life's messy, kitchens are messy, and that's half the fun. Don't wait for the perfect moment — it'll never come. Grab your pan, splash in some wine, and get stuck in. The magic happens when you stop worrying and start cooking with passion. Go on — give it some welly!",
+      "audio_style": "Late 1970s BBC colour TV, mild grain, outdoor ambience.",
+      "ffmpeg_preset": "bbc_1970s_colour_tv",
+      "sample_rate": 22050,
+      "channels": 1
+    },
+    {
+      "name": "Brian_Widlake",
+      "category": "finance",
+      "country": "UK",
+      "era": "1960s-1970s",
+      "voice_archetype": "Classic BBC RP, calm, analytical, authoritative. Crisp diction.",
+      "sample_script": "In uncertain times, clarity is your greatest ally. The economy may shift, markets may wobble, but knowledge steadies the mind. When you understand the forces at play, you reclaim your sense of control. So let's take a clear, measured look at the facts — and find the confidence that comes from truly knowing where you stand.",
+      "audio_style": "1960s BBC current affairs, mono, clean but slightly dry.",
+      "ffmpeg_preset": "bbc_1960s_current_affairs",
+      "sample_rate": 16000,
+      "channels": 1
+    },
+    {
+      "name": "Alan_Watson",
+      "category": "finance",
+      "country": "UK",
+      "era": "1960s-1970s",
+      "voice_archetype": "Measured, thoughtful, slightly professorial BBC tone.",
+      "sample_script": "The financial world can seem daunting, but beneath the noise lies a simple truth: every challenge is manageable when approached with calm and reason. Take a moment, breathe, and let's break things down together. Step by step, we'll turn complexity into clarity.",
+      "audio_style": "1960s BBC studio, narrow dynamic range.",
+      "ffmpeg_preset": "bbc_1960s_current_affairs",
+      "sample_rate": 16000,
+      "channels": 1
+    },
+    {
+      "name": "John_Tusa",
+      "category": "finance",
+      "country": "UK",
+      "era": "1968-1970",
+      "voice_archetype": "Sharp, articulate, intellectual, fast but precise delivery.",
+      "sample_script": "The headlines may shout, but wisdom whispers. When markets shift, the real question is not what happens, but why. And when you understand the why, you can act with purpose. Let's look deeper, think sharper, and make decisions rooted in insight rather than fear.",
+      "audio_style": "Late 1960s BBC, crisp midrange, slight tape grain.",
+      "ffmpeg_preset": "bbc_1960s_current_affairs",
+      "sample_rate": 16000,
+      "channels": 1
+    },
+    {
+      "name": "Vincent_Duggleby",
+      "category": "finance",
+      "country": "UK",
+      "era": "1970s",
+      "voice_archetype": "Friendly, clear, practical, approachable Radio 4 tone.",
+      "sample_script": "Money doesn't have to be mysterious. With the right information, you can make choices that strengthen your future. Today, we'll take something that seems complicated and make it simple — and in doing so, you'll discover just how capable you truly are.",
+      "audio_style": "1970s BBC Radio 4, warm mono, light compression.",
+      "ffmpeg_preset": "bbc_1970s_colour_tv",
+      "sample_rate": 22050,
+      "channels": 1
+    },
+    {
+      "name": "Wolfman_Jack",
+      "category": "radio_personality",
+      "country": "USA",
+      "era": "1960s-1970s",
+      "voice_archetype": "Gravelly, wild, high-energy, iconic raspy delivery.",
+      "sample_script": "This is the Wolfman comin' at ya! Hold on tight, baby, 'cause we're takin' a ride through the night with the hottest sounds on the airwaves!",
+      "audio_style": "1960s AM radio, heavy compression, distortion, narrow bandwidth.",
+      "ffmpeg_preset": "am_radio_1960s",
+      "sample_rate": 11025,
+      "channels": 1
+    },
+    {
+      "name": "Alan_Whicker",
+      "category": "travel",
+      "country": "UK",
+      "era": "1950s-1970s",
+      "voice_archetype": "Elegant, dry wit, smooth BBC RP, observational, slightly amused tone.",
+      "sample_script": "Travel is not merely the act of moving from one place to another — it is the art of discovering who we are when the familiar falls away. As you step into the unknown, carry with you curiosity, grace, and a willingness to be surprised. The world is full of extraordinary stories, and today, one of them is waiting for you.",
+      "audio_style": "1960s BBC documentary, clean mono, light tape hiss, warm midrange.",
+      "ffmpeg_preset": "bbc_1960s_documentary",
+      "sample_rate": 16000,
+      "channels": 1
+    },
+    {
+      "name": "Cliff_Michelmore",
+      "category": "travel",
+      "country": "UK",
+      "era": "1950s-1960s",
+      "voice_archetype": "Warm, reassuring, classic BBC presenter, steady and friendly.",
+      "sample_script": "A holiday is more than a break — it is a reminder that life can be gentle, joyful, and full of small wonders. Wherever you go, take a moment to breathe deeply and let the world show you something new. You deserve the peace that comes from stepping away and simply being present.",
+      "audio_style": "1960s BBC studio, soft compression, slightly rounded highs.",
+      "ffmpeg_preset": "bbc_1960s_documentary",
+      "sample_rate": 16000,
+      "channels": 1
+    },
+    {
+      "name": "John_Carter",
+      "category": "travel",
+      "country": "UK",
+      "era": "1960s-1970s",
+      "voice_archetype": "Practical, conversational, approachable, consumer-friendly tone.",
+      "sample_script": "Travel doesn't need to be grand to be meaningful. Sometimes the most memorable journeys begin with a simple decision to explore. Trust yourself, take that first step, and let the experience unfold. You'll return not just with memories, but with a renewed sense of possibility.",
+      "audio_style": "1970s ITV broadcast, mild grain, warm mono.",
+      "ffmpeg_preset": "itv_1970s_colour_tv",
+      "sample_rate": 22050,
+      "channels": 1
+    },
+    {
+      "name": "Judith_Chalmers",
+      "category": "travel",
+      "country": "UK",
+      "era": "1960s-1970s",
+      "voice_archetype": "Bright, cheerful, welcoming, upbeat female presenter.",
+      "sample_script": "Wherever you choose to go, remember that joy is found in the little moments — the warm breeze, the friendly smile, the unexpected delight. Let your holiday be a celebration of life's simple pleasures. You've earned this time, so embrace it with an open heart.",
+      "audio_style": "1970s ITV colour TV, light reverb, soft tape warmth.",
+      "ffmpeg_preset": "itv_1970s_colour_tv",
+      "sample_rate": 22050,
+      "channels": 1
+    },
+    {
+      "name": "Lowell_Thomas",
+      "category": "travel",
+      "country": "USA",
+      "era": "1950s-1970s",
+      "voice_archetype": "Deep, adventurous, authoritative, storyteller's cadence.",
+      "sample_script": "Adventure calls to each of us in a different voice. Some hear it in distant mountains, others in quiet roads or bustling cities. Wherever it leads you, follow with courage. The world rewards those who seek it with open eyes and an open spirit.",
+      "audio_style": "1950s American radio, warm low-end, narrow bandwidth.",
+      "ffmpeg_preset": "american_radio_1950s",
+      "sample_rate": 11025,
+      "channels": 1
+    },
+    {
+      "name": "Don_Herbert_Travel",
+      "category": "travel",
+      "country": "USA",
+      "era": "1950s-1970s",
+      "voice_archetype": "Clear, enthusiastic, educational, friendly American male voice.",
+      "sample_script": "Every journey is a chance to learn something new — about the world, and about yourself. Approach each moment with curiosity, and you'll find that even the smallest discovery can spark wonder. Exploration begins with a single question: What's out there?",
+      "audio_style": "1960s educational TV, clean midrange, minimal noise.",
+      "ffmpeg_preset": "educational_tv_1960s",
+      "sample_rate": 22050,
+      "channels": 1
+    },
+    {
+      "name": "Charles_Kuralt",
+      "category": "travel",
+      "country": "USA",
+      "era": "1960s-1970s",
+      "voice_archetype": "Soft, poetic, reflective, gentle storytelling cadence.",
+      "sample_script": "The road has a way of revealing the quiet beauty of life — the kind we miss when we rush. Slow down, look around, and let the world speak to you. In every town, every landscape, there's a story waiting to be heard, and perhaps a piece of yourself waiting to be found.",
+      "audio_style": "1970s CBS field recording, warm, slightly ambient, naturalistic.",
+      "ffmpeg_preset": "cbs_field_1970s",
+      "sample_rate": 22050,
+      "channels": 1
+    },
+    {
+      "name": "Barry_Bucknell",
+      "category": "home",
+      "country": "UK",
+      "era": "1950s-1970s",
+      "voice_archetype": "Practical, methodical, calm, slightly stern BBC instructional tone. Measured pacing, clear enunciation, teacherly delivery.",
+      "sample_script": "A home is full of small challenges, but none of them are beyond you. With a steady hand and a bit of patience, you can mend, build, and improve far more than you realise. Every repair is a reminder that you're capable, resourceful, and stronger than you think. Let's take it step by step — you've got this.",
+      "audio_style": "1950s-60s BBC instructional mono.",
+      "ffmpeg_preset": "bbc_home_1950s",
+      "sample_rate": 16000,
+      "channels": 1
+    },
+    {
+      "name": "Joyce_Grenfell",
+      "category": "home",
+      "country": "UK",
+      "era": "1950s-1960s",
+      "voice_archetype": "Warm, humorous, upper-middle-class RP. Gentle, observational, comedic timing with soft admonishment.",
+      "sample_script": "Domestic life can be wonderfully chaotic, but within that chaos lies charm. A gentle word, a small smile, a moment of patience — these are the things that turn a house into a home. Remember, dear, you don't need perfection. You simply need kindness, humour, and a touch of grace.",
+      "audio_style": "1950s BBC Home Service.",
+      "ffmpeg_preset": "bbc_home_1950s",
+      "sample_rate": 16000,
+      "channels": 1
+    },
+    {
+      "name": "Marguerite_Patten",
+      "category": "home",
+      "country": "UK",
+      "era": "1940s-1970s",
+      "voice_archetype": "Clear, organised, reassuring, home economist tone. Practical, efficient, friendly authority.",
+      "sample_script": "A well-run home isn't about strict rules — it's about creating a space where you can breathe. When you take a moment to organise, to plan, to prepare, you're giving yourself the gift of calm. You deserve a home that supports you, and you're more than capable of creating it.",
+      "audio_style": "1950s BBC home-economics tone.",
+      "ffmpeg_preset": "bbc_home_1950s",
+      "sample_rate": 16000,
+      "channels": 1
+    },
+    {
+      "name": "Mary_Berry",
+      "category": "home",
+      "country": "UK",
+      "era": "1960s-1970s",
+      "voice_archetype": "Soft, warm, encouraging, elegant. Gentle RP with nurturing tone.",
+      "sample_script": "A home is built not just with bricks, but with care. When you bake, tidy, or prepare a meal, you're offering comfort to yourself and those you love. Take pride in the little things — they're what make life sweet. And remember, you're doing beautifully.",
+      "audio_style": "1970s ITV lifestyle.",
+      "ffmpeg_preset": "itv_magazine_1970s",
+      "sample_rate": 22050,
+      "channels": 1
+    },
+    {
+      "name": "Katie_Boyle",
+      "category": "home",
+      "country": "UK",
+      "era": "1950s-1970s",
+      "voice_archetype": "Elegant, continental, glamorous, refined. Light European accent with charm and poise.",
+      "sample_script": "Elegance isn't about extravagance — it's about intention. A thoughtful gesture, a well-set table, a warm welcome… these small touches bring beauty into everyday life. You have the power to create moments of grace wherever you go.",
+      "audio_style": "1970s ITV colour TV.",
+      "ffmpeg_preset": "itv_magazine_1970s",
+      "sample_rate": 22050,
+      "channels": 1
+    },
+    {
+      "name": "Arlene_Francis",
+      "category": "home",
+      "country": "USA",
+      "era": "1950s-1970s",
+      "voice_archetype": "Bright, polished, confident American mid-Atlantic tone. Warm, conversational, socially graceful.",
+      "sample_script": "Your home is your stage, and you deserve to feel confident upon it. Whether you're hosting guests or simply enjoying a quiet evening, remember that warmth and sincerity matter far more than perfection. You bring the charm — the rest will follow.",
+      "audio_style": "1960s NBC daytime.",
+      "ffmpeg_preset": "nbc_daytime_1960s",
+      "sample_rate": 22050,
+      "channels": 1
+    },
+    {
+      "name": "Betty_Furness",
+      "category": "home",
+      "country": "USA",
+      "era": "1950s-1960s",
+      "voice_archetype": "Energetic, upbeat, product-demonstration style. Clear, enthusiastic, TV sales cadence.",
+      "sample_script": "Modern life can feel overwhelming, but every new tool, every new skill, is an opportunity. You're clever, adaptable, and ready to take on whatever comes your way. Let's make your home work for you — one simple improvement at a time.",
+      "audio_style": "1950s appliance-demo tone.",
+      "ffmpeg_preset": "american_variety_1950s",
+      "sample_rate": 16000,
+      "channels": 1
+    },
+    {
+      "name": "Hazel_Scott",
+      "category": "home",
+      "country": "USA",
+      "era": "1950s",
+      "voice_archetype": "Smooth, expressive, warm, charismatic. Musical cadence, elegant delivery.",
+      "sample_script": "A home should be a place where your spirit can rest. Fill it with music, laughter, and moments that lift your heart. You deserve a space that reflects your strength and your joy. Let your home be your sanctuary.",
+      "audio_style": "1950s American variety show.",
+      "ffmpeg_preset": "american_variety_1950s",
+      "sample_rate": 16000,
+      "channels": 1
+    },
+    {
+      "name": "Don_Herbert_Home",
+      "category": "home",
+      "country": "USA",
+      "era": "1950s-1970s",
+      "voice_archetype": "Friendly, clear, educational, enthusiastic. Encouraging, curious, lightly professorial.",
+      "sample_script": "Every corner of your home holds something interesting — a problem to solve, a trick to learn, a discovery waiting to happen. Approach it with curiosity, and you'll find that even the simplest tasks can spark wonder. You're learning, growing, and doing brilliantly.",
+      "audio_style": "1960s educational TV, clean midrange, minimal noise.",
+      "ffmpeg_preset": "educational_tv_1960s",
+      "sample_rate": 22050,
+      "channels": 1
+    },
+    {
+      "name": "Brian_Cant",
+      "category": "children",
+      "country": "UK",
+      "era": "1960s-1970s",
+      "voice_archetype": "Warm, gentle, playful storyteller. Light RP, soft, rhythmic, never patronising — always inviting and kind.",
+      "sample_script": "Hello there. Sometimes the world can feel awfully big, can't it? But big worlds are full of wonderful things to discover — new games to play, new friends to meet, new stories to hear. You don't have to do it all at once; just take one little step at a time. And if something feels a bit tricky, that's all right — try again, and again, and again. You're doing ever so well, and there's a whole world waiting for you.",
+      "audio_style": "1970s BBC children's TV.",
+      "ffmpeg_preset": "bbc_children_1970s",
+      "sample_rate": 16000,
+      "channels": 1
+    },
+    {
+      "name": "Johnny_Ball",
+      "category": "children",
+      "country": "UK",
+      "era": "1960s-1970s",
+      "voice_archetype": "Energetic, enthusiastic, clever. Fast, excited teacher energy, full of aha moments.",
+      "sample_script": "Isn't it amazing how many questions you can ask in just one day? Every 'why' and every 'how' is a key that unlocks something marvellous. Don't ever be afraid to wonder, to poke, to prod, to think. Your brain is brilliant, and the more you use it, the more incredible it becomes. Go on — ask another question. Let's see where it takes you!",
+      "audio_style": "1970s BBC educational TV.",
+      "ffmpeg_preset": "bbc_children_1970s",
+      "sample_rate": 16000,
+      "channels": 1
+    },
+    {
+      "name": "Derek_Griffiths",
+      "category": "children",
+      "country": "UK",
+      "era": "1960s-1970s",
+      "voice_archetype": "Warm, musical, expressive. Rich tone, playful rhythm, singsong quality.",
+      "sample_script": "There's a kind of music in everything you do — the way you walk, the way you talk, the way you laugh. Your imagination has its own rhythm, its own colour, its own sound. Let it dance a little today. Draw something wild, sing something silly, dream something big. The world is brighter when you let your true self shine.",
+      "audio_style": "1970s BBC children's variety.",
+      "ffmpeg_preset": "bbc_children_1970s",
+      "sample_rate": 16000,
+      "channels": 1
+    },
+    {
+      "name": "Floella_Benjamin",
+      "category": "children",
+      "country": "UK",
+      "era": "1970s",
+      "voice_archetype": "Bright, joyful, nurturing. Clear diction, sparkling warmth, big emotional presence.",
+      "sample_script": "You are special, just as you are. Your smile, your ideas, your way of seeing the world — they're all unique, and they all matter. When things feel hard, remember that you've already come so far, and you can keep going. Hold your head up, be kind to yourself, and never forget: the world is a better place because you're in it.",
+      "audio_style": "1970s BBC colour TV.",
+      "ffmpeg_preset": "bbc_children_1970s",
+      "sample_rate": 16000,
+      "channels": 1
+    },
+    {
+      "name": "Valerie_Singleton",
+      "category": "children",
+      "country": "UK",
+      "era": "1960s-1970s",
+      "voice_archetype": "Calm, capable, reassuring. Classic BBC clarity with a practical, you can do this tone.",
+      "sample_script": "Some tasks look big and complicated at first, don't they? But if you break them down, one small step at a time, you'll be amazed at what you can achieve. You don't need to be perfect — you just need to keep going. With patience, care, and a little determination, you can turn 'I can't' into 'I did.'",
+      "audio_style": "1960s BBC magazine show.",
+      "ffmpeg_preset": "bbc_children_1970s",
+      "sample_rate": 16000,
+      "channels": 1
+    },
+    {
+      "name": "Peter_Purves",
+      "category": "children",
+      "country": "UK",
+      "era": "1960s-1970s",
+      "voice_archetype": "Friendly, confident, upbeat. Steady, encouraging, slightly authoritative but warm.",
+      "sample_script": "Every challenge is really an invitation — to grow, to learn, to surprise yourself. You might not know exactly how to do something yet, and that's perfectly fine. Start where you are, use what you have, and keep moving forward. You'll look back one day and realise just how far you've come.",
+      "audio_style": "1970s BBC studio.",
+      "ffmpeg_preset": "bbc_children_1970s",
+      "sample_rate": 16000,
+      "channels": 1
+    },
+    {
+      "name": "John_Noakes",
+      "category": "children",
+      "country": "UK",
+      "era": "1960s-1970s",
+      "voice_archetype": "Energetic, adventurous, down-to-earth Northern warmth. Excitable, lively, come on let's do it tone.",
+      "sample_script": "Go on — give it a try! You're braver than you think and stronger than you know. The world's full of adventures, big and small, just waiting for you to say 'yes.' You might wobble, you might slip, but that's all part of the fun. Take a deep breath, trust yourself, and off you go!",
+      "audio_style": "1970s BBC field recordings.",
+      "ffmpeg_preset": "bbc_children_1970s",
+      "sample_rate": 16000,
+      "channels": 1
+    },
+    {
+      "name": "Bob_Keeshan",
+      "category": "children",
+      "country": "USA",
+      "era": "1955-1978",
+      "voice_archetype": "Soft, warm, avuncular. Slow, comforting, fatherly presence.",
+      "sample_script": "Hello, my friend. Today is another chance to learn something new, to be a little kinder, and to enjoy the simple things around you. You don't have to rush. Take your time, listen carefully, and remember that it's all right to make mistakes — that's how we grow. You're doing just fine, and I'm glad you're here.",
+      "audio_style": "1950s-60s American children's TV.",
+      "ffmpeg_preset": "pbs_children_1960s",
+      "sample_rate": 16000,
+      "channels": 1
+    },
+    {
+      "name": "Fred_Rogers",
+      "category": "children",
+      "country": "USA",
+      "era": "1968-1970s",
+      "voice_archetype": "Soft, gentle, emotionally grounding. Intimate, slow, deeply validating.",
+      "sample_script": "You are important, just the way you are. You don't have to be like anyone else to be worthy of love and respect. Every day, you have the chance to learn, to grow, and to be a little kinder — to others and to yourself. I'm proud of you for being you, and I hope you're learning to be proud of yourself, too.",
+      "audio_style": "1960s PBS warm tape.",
+      "ffmpeg_preset": "pbs_children_1960s",
+      "sample_rate": 16000,
+      "channels": 1
+    },
+    {
+      "name": "Shari_Lewis",
+      "category": "children",
+      "country": "USA",
+      "era": "1950s-1970s",
+      "voice_archetype": "Bright, musical, expressive. Quick, playful, character-driven.",
+      "sample_script": "Your imagination is a wonderful, magical thing. It can turn a quiet room into a stage, a simple toy into a whole world, a tiny idea into a big adventure. Don't hide it — let it out! Be silly, be creative, be bold. The world needs your sparkle.",
+      "audio_style": "1960s children's variety.",
+      "ffmpeg_preset": "us_kids_studio_1970s",
+      "sample_rate": 22050,
+      "channels": 1
+    },
+    {
+      "name": "Paul_Winchell",
+      "category": "children",
+      "country": "USA",
+      "era": "1950s-1970s",
+      "voice_archetype": "Versatile, comedic, animated. Rapid shifts, big emotional range.",
+      "sample_script": "Inside you, there are many voices — serious ones, silly ones, brave ones, shy ones. Every one of them is part of who you are, and every one has something to say. Don't be afraid to explore them, to play, to experiment. You're full of talent, and the world is waiting to hear what you have to share.",
+      "audio_style": "1950s-60s American variety.",
+      "ffmpeg_preset": "us_kids_live_1950s",
+      "sample_rate": 11025,
+      "channels": 1
+    },
+    {
+      "name": "Buffalo_Bob_Smith",
+      "category": "children",
+      "country": "USA",
+      "era": "1947-1960",
+      "voice_archetype": "High-energy, carnival-barker enthusiasm. Loud, cheerful, showman style.",
+      "sample_script": "Hey there, kiddo! The world is bursting with fun and excitement, just waiting for you to jump in. Don't hold back — smile big, dream big, and give the day everything you've got. You're the star of your own show, and it's going to be a good one!",
+      "audio_style": "1950s live TV.",
+      "ffmpeg_preset": "us_kids_live_1950s",
+      "sample_rate": 11025,
+      "channels": 1
+    },
+    {
+      "name": "Bob_McAllister",
+      "category": "children",
+      "country": "USA",
+      "era": "1960s-1970s",
+      "voice_archetype": "Fast-paced, upbeat, game-show energy. Big, lively, crowd-pleasing.",
+      "sample_script": "You've got energy, ideas, and a whole lot of potential — so let's make today amazing! Every challenge is a chance to show what you can do. Don't worry about being perfect; just bring your best self and have some fun along the way. You might surprise yourself with how brilliant you are.",
+      "audio_style": "1970s US studio TV.",
+      "ffmpeg_preset": "us_kids_studio_1970s",
+      "sample_rate": 22050,
+      "channels": 1
+    },
+    {
+      "name": "Don_Herbert_Children",
+      "category": "children",
+      "country": "USA",
+      "era": "1951-1972",
+      "voice_archetype": "Clear, friendly, educational. Calm, curious, let's find out tone.",
+      "sample_script": "Every time you ask 'why' or 'how,' you're opening a door to something new. The world is full of little mysteries, and you have exactly the kind of mind that can solve them. Try things, test ideas, see what happens. Curiosity is one of your greatest strengths — use it.",
+      "audio_style": "1960s educational TV.",
+      "ffmpeg_preset": "educational_tv_1960s",
+      "sample_rate": 22050,
+      "channels": 1
+    },
+    {
+      "name": "Soupy_Sales",
+      "category": "children",
+      "country": "USA",
+      "era": "1950s-1970s",
+      "voice_archetype": "Silly, chaotic, comedic. Big, playful, slightly anarchic.",
+      "sample_script": "You know what? Sometimes the best thing you can do is just have a good laugh. Life can be serious, but it doesn't always have to be. Be silly, make a funny face, tell a ridiculous joke. Joy is powerful — and you've got plenty of it to share.",
+      "audio_style": "1960s US comedy TV.",
+      "ffmpeg_preset": "us_kids_studio_1970s",
+      "sample_rate": 22050,
+      "channels": 1
+    },
+    {
+      "name": "Fran_Allison",
+      "category": "children",
+      "country": "USA",
+      "era": "1947-1957",
+      "voice_archetype": "Warm, theatrical, expressive. Storyteller's tone, gentle and kind.",
+      "sample_script": "Stories help us make sense of the world, and you have so many stories inside you. Every feeling, every thought, every little adventure can become a tale worth telling. Be gentle with yourself, be kind to others, and let your imagination speak. You have a beautiful voice in this world.",
+      "audio_style": "1950s live TV.",
+      "ffmpeg_preset": "us_kids_live_1950s",
+      "sample_rate": 11025,
+      "channels": 1
+    },
+    {
+      "name": "Bob_Homme",
+      "category": "children",
+      "country": "USA",
+      "era": "1958-1970s",
+      "voice_archetype": "Soft, slow, soothing. Deep, calming, bedtime-like.",
+      "sample_script": "Come on in, and find a comfy place to sit. Take a deep breath and let your shoulders relax. The world outside can be busy and noisy, but here, you can rest. You're safe, you're cared for, and you're growing a little more every day. There's always room for you here.",
+      "audio_style": "1950s-60s gentle children's TV.",
+      "ffmpeg_preset": "pbs_children_1960s",
+      "sample_rate": 16000,
+      "channels": 1
+    },
+    {
+      "name": "Winston_Churchill",
+      "category": "historical",
+      "country": "UK",
+      "era": "1940s-1950s",
+      "voice_archetype": "Gravelly, defiant, oratorical. Deliberate cadence, rolling emphasis, unstoppable conviction.",
+      "sample_script": "We shall not flag or fail. Whatever storms may come, whatever hardships lie ahead — remember that those who stand firm in the face of adversity are the ones history remembers. Go forward. Go forward with everything you have.",
+      "audio_style": "1940s BBC wartime broadcast, narrow bandwidth, slight tape hiss.",
+      "ffmpeg_preset": "bbc_1950s_radio",
+      "sample_rate": 16000,
+      "channels": 1,
+      "response_type": [
+        "motivate",
+        "validate",
+        "celebrate"
+      ],
+      "response_register": [
+        "serious",
+        "dramatic"
+      ],
+      "clip_status": "✅ 1 clips (WAV ready)",
+      "reference_folder": "Winston_Churchill"
+    },
+    {
+      "name": "Martin_Luther_King_Jr",
+      "category": "historical",
+      "country": "USA",
+      "era": "1950s-1960s",
+      "voice_archetype": "Soaring, rhythmic, preacher cadence. Moral urgency, rising repetition, deep resonance.",
+      "sample_script": "There is a dream that lives in each of us — a vision of a life well-lived, of purpose found and followed. When the road seems long and the weight seems heavy, remember: you did not come this far to stop here. Keep moving. Keep believing. The arc bends toward those who refuse to give up.",
+      "audio_style": "1960s American civil rights broadcast, slight AM radio compression.",
+      "ffmpeg_preset": "am_radio_1960s",
+      "sample_rate": 16000,
+      "channels": 1,
+      "response_type": [
+        "motivate",
+        "console",
+        "validate"
+      ],
+      "response_register": [
+        "serious",
+        "dramatic"
+      ],
+      "clip_status": "✅ 17 clips",
+      "reference_folder": "Martin_Luther_King_Jr"
+    },
+    {
+      "name": "John_F_Kennedy",
+      "category": "historical",
+      "country": "USA",
+      "era": "1960s",
+      "voice_archetype": "New England authority. Crisp, visionary, measured urgency. Youth and gravitas combined.",
+      "sample_script": "We choose to do the difficult things — not because they are easy, but because they are worth doing. The measure of our character is not found in the comfortable moments, but in the ones that test us. Rise to this. The world is watching, and more importantly — so are you.",
+      "audio_style": "1960s American TV broadcast, clean but period-compressed.",
+      "ffmpeg_preset": "american_radio_1950s",
+      "sample_rate": 16000,
+      "channels": 1,
+      "response_type": [
+        "motivate",
+        "celebrate",
+        "validate"
+      ],
+      "response_register": [
+        "serious",
+        "dramatic"
+      ],
+      "clip_status": "✅ 15 clips",
+      "reference_folder": "John_F._Kennedy"
+    },
+    {
+      "name": "Franklin_D_Roosevelt",
+      "category": "historical",
+      "country": "USA",
+      "era": "1930s-1940s",
+      "voice_archetype": "Patrician warmth. Paternal, steady, fireside intimacy. Reassuring authority.",
+      "sample_script": "The darkest moments in any life are not the end of the story — they are the turning point. Courage is not the absence of fear; it is the decision that something matters more than the fear. Steady yourself. Draw on every reserve you have. You have more than you think.",
+      "audio_style": "1930s-40s radio broadcast, narrow bandwidth, warm low-end.",
+      "ffmpeg_preset": "american_radio_1950s",
+      "sample_rate": 16000,
+      "channels": 1,
+      "response_type": [
+        "motivate",
+        "console",
+        "validate"
+      ],
+      "response_register": [
+        "serious",
+        "dramatic"
+      ],
+      "clip_status": "⚠️ 1 clip — needs bulk-up",
+      "reference_folder": "Franklin_D._Roosevelt"
+    },
+    {
+      "name": "Queen_Elizabeth_II",
+      "category": "historical",
+      "country": "UK",
+      "era": "1950s-1970s",
+      "voice_archetype": "Measured, dignified, upper RP. Quiet authority, duty above self, composed in all weathers.",
+      "sample_script": "There are moments when life asks more of us than we feel able to give. It is in those moments that character is revealed — not by what we achieve, but by how we carry ourselves. Hold fast to what matters. Serve those around you. And know that calm resolve is its own kind of strength.",
+      "audio_style": "1960s BBC broadcast, formal, clean mono.",
+      "ffmpeg_preset": "bbc_1960s_mono",
+      "sample_rate": 16000,
+      "channels": 1,
+      "response_type": [
+        "validate",
+        "console",
+        "motivate"
+      ],
+      "response_register": [
+        "serious"
+      ],
+      "clip_status": "✅ 12 clips",
+      "reference_folder": "Queen_Elizabeth_II"
+    },
+    {
+      "name": "King_George_VI",
+      "category": "historical",
+      "country": "UK",
+      "era": "1930s-1950s",
+      "voice_archetype": "Earnest, determined, quietly brave. Speech hard-won, warmth beneath formality.",
+      "sample_script": "I speak to you now not as a king who finds words easy — but as a man who has learned that the hardest thing, and the most worthwhile, is to keep going when every instinct says stop. You are not alone in this. Courage is not given to us — it is found, one step at a time.",
+      "audio_style": "1940s BBC wartime radio, narrow bandwidth, slight hiss.",
+      "ffmpeg_preset": "bbc_1950s_radio",
+      "sample_rate": 16000,
+      "channels": 1,
+      "response_type": [
+        "console",
+        "validate",
+        "motivate"
+      ],
+      "response_register": [
+        "serious",
+        "dramatic"
+      ],
+      "clip_status": "⚠️ 1 clip — needs bulk-up",
+      "reference_folder": "King_George_VI"
+    },
+    {
+      "name": "King_Charles_III",
+      "category": "historical",
+      "country": "UK",
+      "era": "1970s-present",
+      "voice_archetype": "Thoughtful, slightly formal, reflective. Modern British sovereign, duty and earnestness.",
+      "sample_script": "The challenges we face are real, but so is our capacity to meet them. When we take the time to listen — to truly listen — to those around us and to the world itself, we begin to understand what matters. Act from that understanding. Serve from that place. It is enough.",
+      "audio_style": "1970s BBC broadcast, clean, warm midrange.",
+      "ffmpeg_preset": "bbc_1970s_colour_tv",
+      "sample_rate": 22050,
+      "channels": 1,
+      "response_type": [
+        "validate",
+        "inform"
+      ],
+      "response_register": [
+        "serious"
+      ],
+      "clip_status": "✅ 12 clips",
+      "reference_folder": "King_Charles_III"
+    },
+    {
+      "name": "John_Wayne",
+      "category": "hollywood",
+      "country": "USA",
+      "era": "1950s-1970s",
+      "voice_archetype": "Western drawl authority. Laconic, direct, unhurried. A man of few words, all of them certain.",
+      "sample_script": "Life doesn't give you much in the way of guarantees. What it does give you is the chance to stand up, face what's in front of you, and do what needs doing. That's enough. That's always been enough. Get up. Get on with it.",
+      "audio_style": "1960s Hollywood film, warm and direct.",
+      "ffmpeg_preset": "hollywood_1960s",
+      "sample_rate": 16000,
+      "channels": 1,
+      "response_type": [
+        "motivate",
+        "challenge",
+        "validate"
+      ],
+      "response_register": [
+        "serious",
+        "deadpan"
+      ],
+      "clip_status": "✅ 87 clips",
+      "reference_folder": "John_Wayne"
+    },
+    {
+      "name": "Sergeant_Hartman",
+      "category": "hollywood",
+      "country": "USA",
+      "era": "1987",
+      "voice_archetype": "Full Metal Jacket drill instructor. Brutal, relentless, mercilessly direct. No softness anywhere.",
+      "sample_script": "Listen up. You think this is hard? This is nothing. You have not begun to discover what you are capable of. Every complaint, every excuse, every moment of self-pity is a wall you are building around yourself. Tear it down. Start now. Move.",
+      "audio_style": "1980s film audio, dry, punchy, close-mic presence.",
+      "ffmpeg_preset": "hollywood_1960s",
+      "sample_rate": 22050,
+      "channels": 1,
+      "response_type": [
+        "challenge",
+        "motivate"
+      ],
+      "response_register": [
+        "dramatic",
+        "serious"
+      ],
+      "clip_status": "✅ 87 clips",
+      "reference_folder": "Military_Drill_Instructor"
+    },
+    {
+      "name": "Mickey_Mouse",
+      "category": "cartoon",
+      "country": "USA",
+      "era": "1950s-1970s",
+      "voice_archetype": "Eternal cheerful optimism. High-pitched, warm, delighted by everything. Boundless goodwill.",
+      "sample_script": "Ha-ha! You know what I say? Today is another chance to do something wonderful! It doesn't have to be big — even the littlest thing done with a happy heart makes the whole world a bit brighter. So come on — let's go!",
+      "audio_style": "1960s Disney studio, bright, slightly processed.",
+      "ffmpeg_preset": "us_kids_studio_1970s",
+      "sample_rate": 22050,
+      "channels": 1,
+      "response_type": [
+        "celebrate",
+        "amuse",
+        "motivate"
+      ],
+      "response_register": [
+        "light"
+      ],
+      "clip_status": "✅ 29 clips",
+      "reference_folder": "Mickey_Mouse"
+    },
+    {
+      "name": "Goofy",
+      "category": "cartoon",
+      "country": "USA",
+      "era": "1950s-1970s",
+      "voice_archetype": "Bumbling, loveable, guileless. That laugh, generous spirit — things go wrong but life is fun.",
+      "sample_script": "A-hyuck! You know, I used to think I had to get everything just right. But then I realised — the fun is in the trying! Go on, have a go. It might not work out perfectly. But then again — a-hyuck — that's what makes it an adventure!",
+      "audio_style": "1960s Disney studio, warm, playful.",
+      "ffmpeg_preset": "us_kids_studio_1970s",
+      "sample_rate": 22050,
+      "channels": 1,
+      "response_type": [
+        "amuse",
+        "celebrate",
+        "console"
+      ],
+      "response_register": [
+        "light"
+      ],
+      "clip_status": "✅ 14 clips",
+      "reference_folder": "Goofy"
+    },
+    {
+      "name": "Optimus_Prime",
+      "category": "scifi",
+      "country": "USA",
+      "era": "1984-1987",
+      "voice_archetype": "Noble Autobot leader. Deep, measured, heroic. Every word carries the weight of responsibility.",
+      "sample_script": "There are moments when the burden feels too heavy — when the road ahead seems impossible. But I have learned this: within every being lies a strength that circumstances alone can reveal. You were not built to break. You were built to endure, to rise, and to lead. Till all are one.",
+      "audio_style": "1980s animated series, slightly processed deep voice.",
+      "ffmpeg_preset": "bbc_1970s_colour_tv",
+      "sample_rate": 22050,
+      "channels": 1,
+      "response_type": [
+        "motivate",
+        "validate",
+        "challenge"
+      ],
+      "response_register": [
+        "serious",
+        "dramatic"
+      ],
+      "clip_status": "✅ 39 clips",
+      "reference_folder": "Optimus_Prime"
+    },
+    {
+      "name": "David_Attenborough",
+      "category": "documentary",
+      "country": "UK",
+      "era": "1950s-1970s",
+      "voice_archetype": "Reverent, precise, gently astonished. Finds the extraordinary in the ordinary. Unhurried observation.",
+      "sample_script": "In the most unlikely of places, life finds a way. What appears at first to be chaos reveals itself, on closer inspection, to be something quite remarkable — a system, a rhythm, a quiet persistence. And so it is with us. Given time, given patience, something wonderful tends to emerge.",
+      "audio_style": "1970s BBC nature documentary, clean, intimate.",
+      "ffmpeg_preset": "bbc_1960s_documentary",
+      "sample_rate": 22050,
+      "channels": 1,
+      "response_type": [
+        "validate",
+        "amuse",
+        "inform",
+        "console"
+      ],
+      "response_register": [
+        "deadpan",
+        "serious"
+      ],
+      "clip_status": "✅ 20 clips",
+      "reference_folder": "David_Attenborough"
+    },
+    {
+      "name": "Gandalf_McKellen",
+      "category": "fantasy",
+      "country": "UK",
+      "era": "2001-2014",
+      "voice_archetype": "Ancient wisdom, thunderous authority, gentle cryptic warmth. The weight of ages behind every word.",
+      "sample_script": "A great many things that seem impossible reveal themselves, in time, to be merely difficult. And a great many things that seem difficult reveal themselves to be entirely within your reach. The question is never whether the path exists — it is whether you are willing to walk it.",
+      "audio_style": "Epic film audio, deep, resonant, slight reverb.",
+      "ffmpeg_preset": "bbc_drama_1970s",
+      "sample_rate": 22050,
+      "channels": 1,
+      "response_type": [
+        "motivate",
+        "validate",
+        "challenge"
+      ],
+      "response_register": [
+        "serious",
+        "dramatic"
+      ],
+      "clip_status": "❌ NEEDS CLIP",
+      "best_source": "YouTube — LOTR/Hobbit film clips"
+    },
+    {
+      "name": "Darth_Vader_Jones",
+      "category": "scifi",
+      "country": "USA",
+      "era": "1977-1983",
+      "voice_archetype": "Resonant menace, absolute authority. Every word a command. Breathing part of the performance.",
+      "sample_script": "You have been tested. And you have not yet reached your limit — though you believe you have. That belief is the only enemy worth defeating. I have seen what lies beneath doubt. I have seen what you are capable of. Do not make me wait for you to see it yourself.",
+      "audio_style": "1970s film audio, deep, slightly processed.",
+      "ffmpeg_preset": "hollywood_1960s",
+      "sample_rate": 16000,
+      "channels": 1,
+      "response_type": [
+        "challenge",
+        "motivate"
+      ],
+      "response_register": [
+        "dramatic",
+        "serious"
+      ],
+      "clip_status": "❌ NEEDS CLIP",
+      "best_source": "YouTube — Star Wars film clips"
+    },
+    {
+      "name": "James_Bond_Connery",
+      "category": "hollywood",
+      "country": "UK",
+      "era": "1962-1971",
+      "voice_archetype": "1960s spy cool. Dry wit, effortless confidence, slight Scottish edge. Never rattled.",
+      "sample_script": "The situation, as I understand it, is rather more manageable than it appears. Most problems, when examined coolly and without panic, have a solution — often a rather elegant one. The key is to remain calm, think clearly, and act decisively. Shall we proceed?",
+      "audio_style": "1960s film audio, clean, slightly warm, confident presence.",
+      "ffmpeg_preset": "bbc_drama_1970s",
+      "sample_rate": 22050,
+      "channels": 1,
+      "response_type": [
+        "celebrate",
+        "amuse",
+        "validate"
+      ],
+      "response_register": [
+        "deadpan"
+      ],
+      "clip_status": "❌ NEEDS CLIP",
+      "best_source": "YouTube — Connery Bond film clips"
+    },
+    {
+      "name": "BBC_Female_Newsreader",
+      "category": "archetype",
+      "country": "UK",
+      "era": "1960s-1970s",
+      "voice_archetype": "Precise, authoritative, composed. Clear upper-RP female. No emotion leaked — pure information delivery.",
+      "voice_description": "A precise, authoritative British female voice speaking clearly and calmly with perfect diction. Measured pace, no inflection beyond what the facts require. 1960s BBC newsreader quality.",
+      "sample_script": "The facts, clearly stated, are these: you are here, you are capable, and the situation — whatever it may be — is manageable. What is required now is clarity of thought and steadiness of purpose. Let us proceed.",
+      "audio_style": "1960s BBC news broadcast, crisp mono.",
+      "ffmpeg_preset": "bbc_1960s_current_affairs",
+      "sample_rate": 16000,
+      "channels": 1,
+      "response_type": [
+        "inform",
+        "validate"
+      ],
+      "response_register": [
+        "serious",
+        "deadpan"
+      ],
+      "clip_status": "PARLER"
+    },
+    {
+      "name": "Diana_Rigg",
+      "category": "actress",
+      "country": "UK",
+      "era": "1960s-1970s",
+      "voice_archetype": "Elegant, razor-sharp, poised. Cool confidence, mid-to-upper RP, dry wit, controlled power.",
+      "sample_script": "Strength doesn't always shout. Sometimes it speaks in quiet confidence, in the calm certainty that you can face whatever comes. Stand tall, trust your mind, and remember that elegance and power can live in the same breath.",
+      "audio_style": "1960s-70s BBC drama, polished RP, tight dynamic control.",
+      "ffmpeg_preset": "bbc_drama_1970s",
+      "sample_rate": 22050,
+      "channels": 1,
+      "response_type": [
+        "validate",
+        "challenge"
+      ],
+      "response_register": [
+        "serious",
+        "deadpan"
+      ],
+      "clip_status": "NEEDS CLIP",
+      "best_source": "YouTube — The Avengers, On Her Majesty's Secret Service"
+    },
+    {
+      "name": "Joanna_Lumley",
+      "category": "actress",
+      "country": "UK",
+      "era": "1970s",
+      "voice_archetype": "Velvety, posh, glamorous. Smooth, warm, slightly husky, effortless charm.",
+      "sample_script": "Life becomes infinitely more beautiful when you allow yourself a touch of grace. Move gently, speak kindly, and let your presence warm the room. You have a glow that others feel long before you notice it yourself.",
+      "audio_style": "1970s ITV colour drama, warm midrange, light saturation.",
+      "ffmpeg_preset": "itv_1970s_colour_tv",
+      "sample_rate": 22050,
+      "channels": 1,
+      "response_type": [
+        "validate",
+        "console"
+      ],
+      "response_register": [
+        "light",
+        "deadpan"
+      ],
+      "clip_status": "NEEDS CLIP",
+      "best_source": "YouTube — The New Avengers, Sapphire & Steel"
+    },
+    {
+      "name": "Julie_Andrews",
+      "category": "actress",
+      "country": "UK",
+      "era": "1950s-1970s",
+      "voice_archetype": "Crystal-clear diction, musical, warm. Bright, articulate, nurturing, perfect pitch in speech.",
+      "sample_script": "There is music in the way you move through the world. Even on difficult days, your voice, your kindness, your hope create harmony. Let your heart stay open, and you'll find beauty in the simplest moments.",
+      "audio_style": "1960s Hollywood film, bright EQ, clean studio presence.",
+      "ffmpeg_preset": "bbc_drama_1970s",
+      "sample_rate": 22050,
+      "channels": 1,
+      "response_type": [
+        "motivate",
+        "console"
+      ],
+      "response_register": [
+        "light",
+        "serious"
+      ],
+      "clip_status": "NEEDS CLIP",
+      "best_source": "YouTube — Mary Poppins, The Sound of Music, interviews"
+    },
+    {
+      "name": "Judi_Dench",
+      "category": "actress",
+      "country": "UK",
+      "era": "1960s-1970s",
+      "voice_archetype": "Strong, authoritative, expressive. Precise diction, emotional depth, commanding presence.",
+      "sample_script": "You are stronger than you realise. Every challenge you've faced has shaped you into someone capable, resilient, and wise. Speak your truth with courage. The world listens when you do.",
+      "audio_style": "1970s BBC drama, restrained but resonant.",
+      "ffmpeg_preset": "bbc_drama_1970s",
+      "sample_rate": 22050,
+      "channels": 1,
+      "response_type": [
+        "motivate",
+        "validate"
+      ],
+      "response_register": [
+        "serious",
+        "dramatic"
+      ],
+      "clip_status": "NEEDS CLIP",
+      "best_source": "YouTube — early BBC drama, stage recordings"
+    },
+    {
+      "name": "Diana_Dors",
+      "category": "actress",
+      "country": "UK",
+      "era": "1950s-1960s",
+      "voice_archetype": "Playful, sultry, confident. Breathy glamour with British cheekiness.",
+      "sample_script": "Confidence isn't about perfection — it's about stepping into the light exactly as you are. Be bold, be cheeky, be gloriously yourself. The world loves a bit of sparkle.",
+      "audio_style": "1950s British film, warm mono, slight tape saturation.",
+      "ffmpeg_preset": "bbc_1960s_mono",
+      "sample_rate": 16000,
+      "channels": 1,
+      "response_type": [
+        "amuse",
+        "celebrate"
+      ],
+      "response_register": [
+        "light",
+        "deadpan"
+      ],
+      "clip_status": "NEEDS CLIP",
+      "best_source": "YouTube — British film clips, interviews"
+    },
+    {
+      "name": "Wendy_Craig",
+      "category": "actress",
+      "country": "UK",
+      "era": "1960s-1970s",
+      "voice_archetype": "Warm, comedic, slightly flustered. Soft RP with domestic charm.",
+      "sample_script": "Life can be wonderfully messy, and that's all right. Take a breath, laugh at the chaos, and remember that warmth and kindness matter far more than getting everything right.",
+      "audio_style": "1970s ITV sitcom, warm and slightly roomy.",
+      "ffmpeg_preset": "itv_1970s_colour_tv",
+      "sample_rate": 22050,
+      "channels": 1,
+      "response_type": [
+        "console",
+        "amuse"
+      ],
+      "response_register": [
+        "light"
+      ],
+      "clip_status": "NEEDS CLIP",
+      "best_source": "YouTube — Butterflies, Not in Front of the Children"
+    },
+    {
+      "name": "Penelope_Keith",
+      "category": "actress",
+      "country": "UK",
+      "era": "1970s",
+      "voice_archetype": "Tall, posh, arch, witty. Cut-glass RP, commanding, dry humour.",
+      "sample_script": "Hold your head high. You have wit, intelligence, and a presence that commands respect. Never shrink yourself to make others comfortable — your voice deserves to be heard.",
+      "audio_style": "1970s BBC sitcom, crisp and precise.",
+      "ffmpeg_preset": "bbc_drama_1970s",
+      "sample_rate": 22050,
+      "channels": 1,
+      "response_type": [
+        "challenge",
+        "validate"
+      ],
+      "response_register": [
+        "deadpan",
+        "serious"
+      ],
+      "clip_status": "NEEDS CLIP",
+      "best_source": "YouTube — The Good Life, To the Manor Born"
+    },
+    {
+      "name": "Sheila_Hancock",
+      "category": "actress",
+      "country": "UK",
+      "era": "1960s-1970s",
+      "voice_archetype": "Grounded, articulate, emotionally rich. Strong presence, empathetic tone.",
+      "sample_script": "Your heart is stronger than you think. You've weathered storms and still found compassion. Let that be your guide. You bring depth and honesty to the world.",
+      "audio_style": "1970s BBC drama, warm and grounded.",
+      "ffmpeg_preset": "bbc_drama_1970s",
+      "sample_rate": 22050,
+      "channels": 1,
+      "response_type": [
+        "console",
+        "validate"
+      ],
+      "response_register": [
+        "serious"
+      ],
+      "clip_status": "NEEDS CLIP",
+      "best_source": "YouTube — BBC drama archive, interviews"
+    },
+    {
+      "name": "Honor_Blackman",
+      "category": "actress",
+      "country": "UK",
+      "era": "1950s-1970s",
+      "voice_archetype": "Deep, confident, seductive. Controlled, powerful, unmistakably cool.",
+      "sample_script": "Walk forward with confidence. You have a quiet power that doesn't need to shout. Trust your instincts — they're sharper than you know.",
+      "audio_style": "1960s BBC drama, deep register, controlled compression.",
+      "ffmpeg_preset": "bbc_drama_1970s",
+      "sample_rate": 22050,
+      "channels": 1,
+      "response_type": [
+        "motivate",
+        "challenge"
+      ],
+      "response_register": [
+        "serious",
+        "deadpan"
+      ],
+      "clip_status": "NEEDS CLIP",
+      "best_source": "YouTube — The Avengers, Goldfinger"
+    },
+    {
+      "name": "Lucille_Ball",
+      "category": "actress",
+      "country": "USA",
+      "era": "1950s-1970s",
+      "voice_archetype": "Expressive, comedic, chaotic energy. Big emotional range, fast shifts, iconic rasp.",
+      "sample_script": "Don't be afraid to laugh at life — and at yourself. Joy is a strength, not a weakness. When you let your true personality shine, you light up the world.",
+      "audio_style": "1950s CBS sitcom, period mono, light buzz and tape warmth.",
+      "ffmpeg_preset": "us_sitcom_1970s",
+      "sample_rate": 22050,
+      "channels": 1,
+      "response_type": [
+        "amuse",
+        "celebrate"
+      ],
+      "response_register": [
+        "light"
+      ],
+      "clip_status": "NEEDS CLIP",
+      "best_source": "YouTube — I Love Lucy, interviews"
+    },
+    {
+      "name": "Elizabeth_Taylor",
+      "category": "actress",
+      "country": "USA",
+      "era": "1950s-1970s",
+      "voice_archetype": "Rich, dramatic, regal. Smooth, powerful, emotionally intense.",
+      "sample_script": "You carry a fire within you — passion, courage, and a heart that feels deeply. Don't dim that flame. Let it guide you toward the life you deserve.",
+      "audio_style": "1960s Hollywood film, lush and wide, some room.",
+      "ffmpeg_preset": "hollywood_1960s",
+      "sample_rate": 16000,
+      "channels": 1,
+      "response_type": [
+        "motivate",
+        "validate"
+      ],
+      "response_register": [
+        "dramatic",
+        "serious"
+      ],
+      "clip_status": "NEEDS CLIP",
+      "best_source": "YouTube — Cleopatra, Who's Afraid of Virginia Woolf, interviews"
+    },
+    {
+      "name": "Audrey_Hepburn",
+      "category": "actress",
+      "country": "USA",
+      "era": "1950s-1970s",
+      "voice_archetype": "Soft, elegant, breathy. Gentle, refined, delicate, emotionally warm.",
+      "sample_script": "Be gentle with yourself. You are enough — more than enough. Grace isn't something you earn; it's something you already carry within you.",
+      "audio_style": "1960s Hollywood, airy and intimate, light compression.",
+      "ffmpeg_preset": "hollywood_1960s",
+      "sample_rate": 16000,
+      "channels": 1,
+      "response_type": [
+        "console",
+        "validate"
+      ],
+      "response_register": [
+        "serious",
+        "light"
+      ],
+      "clip_status": "NEEDS CLIP",
+      "best_source": "YouTube — Breakfast at Tiffany's, Roman Holiday, UNICEF speeches"
+    },
+    {
+      "name": "Katharine_Hepburn",
+      "category": "actress",
+      "country": "USA",
+      "era": "1950s-1970s",
+      "voice_archetype": "Clipped, rapid, confident. Sharp wit, intellectual, unmistakable cadence.",
+      "sample_script": "Don't wait for permission to be extraordinary. Speak boldly, live honestly, and never apologise for your brilliance.",
+      "audio_style": "1940s-60s Hollywood, crisp and clipped, bright upper mids.",
+      "ffmpeg_preset": "hollywood_1960s",
+      "sample_rate": 16000,
+      "channels": 1,
+      "response_type": [
+        "challenge",
+        "motivate"
+      ],
+      "response_register": [
+        "serious",
+        "deadpan"
+      ],
+      "clip_status": "NEEDS CLIP",
+      "best_source": "YouTube — The Philadelphia Story, interviews, talk shows"
+    },
+    {
+      "name": "Mary_Tyler_Moore",
+      "category": "actress",
+      "country": "USA",
+      "era": "1960s-1970s",
+      "voice_archetype": "Bright, modern, upbeat. Friendly, optimistic, contemporary American tone.",
+      "sample_script": "Every day is a chance to start fresh. Smile, take a breath, and step forward with optimism. You're capable of more than you imagine.",
+      "audio_style": "1970s US network sitcom, clean and bright.",
+      "ffmpeg_preset": "us_sitcom_1970s",
+      "sample_rate": 22050,
+      "channels": 1,
+      "response_type": [
+        "motivate",
+        "celebrate"
+      ],
+      "response_register": [
+        "light"
+      ],
+      "clip_status": "NEEDS CLIP",
+      "best_source": "YouTube — The Mary Tyler Moore Show, interviews"
+    },
+    {
+      "name": "Barbara_Stanwyck",
+      "category": "actress",
+      "country": "USA",
+      "era": "1950s-1970s",
+      "voice_archetype": "Tough, grounded, no-nonsense. Strong, direct, authoritative.",
+      "sample_script": "Stand firm. You've survived too much to doubt yourself now. Strength is in your bones — use it.",
+      "audio_style": "1950s Hollywood drama, dry and direct, minimal reverb.",
+      "ffmpeg_preset": "hollywood_1960s",
+      "sample_rate": 16000,
+      "channels": 1,
+      "response_type": [
+        "challenge",
+        "motivate"
+      ],
+      "response_register": [
+        "serious",
+        "dramatic"
+      ],
+      "clip_status": "NEEDS CLIP",
+      "best_source": "YouTube — Double Indemnity, The Big Valley, interviews"
+    },
+    {
+      "name": "Debbie_Reynolds",
+      "category": "actress",
+      "country": "USA",
+      "era": "1950s-1970s",
+      "voice_archetype": "Cheerful, musical, expressive. Bubbly, lively, wholesome.",
+      "sample_script": "Let joy be your compass. Sing, laugh, dance a little. Life is brighter when you let your spirit play.",
+      "audio_style": "1950s American variety, warm and bright.",
+      "ffmpeg_preset": "american_variety_1950s",
+      "sample_rate": 16000,
+      "channels": 1,
+      "response_type": [
+        "celebrate",
+        "amuse"
+      ],
+      "response_register": [
+        "light"
+      ],
+      "clip_status": "NEEDS CLIP",
+      "best_source": "YouTube — Singin' in the Rain, The Debbie Reynolds Show, interviews"
+    },
+    {
+      "name": "Jane_Fonda",
+      "category": "actress",
+      "country": "USA",
+      "era": "1960s-1970s",
+      "voice_archetype": "Clear, confident, modern. Assertive, intelligent, energetic.",
+      "sample_script": "You have a voice — use it. You have a mind — trust it. You have a purpose — follow it with conviction.",
+      "audio_style": "1970s American, clean and forward, natural dynamic range.",
+      "ffmpeg_preset": "us_sitcom_1970s",
+      "sample_rate": 22050,
+      "channels": 1,
+      "response_type": [
+        "challenge",
+        "motivate"
+      ],
+      "response_register": [
+        "serious"
+      ],
+      "clip_status": "NEEDS CLIP",
+      "best_source": "YouTube — Klute, interviews, 1970s talk shows"
+    },
+    {
+      "name": "Angie_Dickinson",
+      "category": "actress",
+      "country": "USA",
+      "era": "1960s-1970s",
+      "voice_archetype": "Cool, glamorous, slightly husky. Controlled, confident, stylish.",
+      "sample_script": "Move with confidence. You're sharper, cooler, and more capable than you give yourself credit for.",
+      "audio_style": "1970s US network drama, warm and controlled.",
+      "ffmpeg_preset": "us_sitcom_1970s",
+      "sample_rate": 22050,
+      "channels": 1,
+      "response_type": [
+        "validate",
+        "motivate"
+      ],
+      "response_register": [
+        "deadpan",
+        "serious"
+      ],
+      "clip_status": "NEEDS CLIP",
+      "best_source": "YouTube — Police Woman, Rio Bravo, interviews"
+    },
+    {
+      "name": "Cloris_Leachman",
+      "category": "actress",
+      "country": "USA",
+      "era": "1950s-1970s",
+      "voice_archetype": "Comedic, sharp, expressive. Sarcastic, witty, characterful.",
+      "sample_script": "Never underestimate the power of humour. A sharp mind and a quick wit can carry you through anything.",
+      "audio_style": "1970s US sitcom, lively and punchy.",
+      "ffmpeg_preset": "us_sitcom_1970s",
+      "sample_rate": 22050,
+      "channels": 1,
+      "response_type": [
+        "amuse",
+        "challenge"
+      ],
+      "response_register": [
+        "light",
+        "deadpan"
+      ],
+      "clip_status": "NEEDS CLIP",
+      "best_source": "YouTube — The Mary Tyler Moore Show, interviews"
+    }
+  ]
+}

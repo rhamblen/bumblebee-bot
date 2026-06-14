@@ -1,0 +1,551 @@
+{
+  "generated_from": "character_voices.json",
+  "total": 36,
+  "clips_on_disk": 2,
+  "parler_only": 34,
+  "characters": [
+    {
+      "name": "John_Wayne",
+      "response_type": [
+        "motivate",
+        "challenge",
+        "validate"
+      ],
+      "response_register": [
+        "serious",
+        "deadpan"
+      ],
+      "reference_clip": "/media/references/John_Wayne/you-do-and-it-ll-be-the-biggest-mistake-you-ever-made-you-texas-brush-popper.wav",
+      "voice_description": "Western drawl authority. Laconic, direct, unhurried. A man of few words, all of them certain. Recording style: 1960s Hollywood film, warm and direct.",
+      "voice_archetype": "Western drawl authority. Laconic, direct, unhurried. A man of few words, all of them certain.",
+      "clip_on_disk": true
+    },
+    {
+      "name": "Winston_Churchill",
+      "response_type": [
+        "motivate",
+        "validate",
+        "celebrate"
+      ],
+      "response_register": [
+        "serious",
+        "dramatic"
+      ],
+      "reference_clip": "/media/references/Winston_Churchill/winston_speech_ref_01.wav",
+      "voice_description": "Gravelly, defiant, oratorical. Deliberate cadence, rolling emphasis, unstoppable conviction. Recording style: 1940s BBC wartime broadcast, narrow bandwidth, slight tape hiss.",
+      "voice_archetype": "Gravelly, defiant, oratorical. Deliberate cadence, rolling emphasis, unstoppable conviction.",
+      "clip_on_disk": true
+    },
+    {
+      "name": "Angie_Dickinson",
+      "response_type": [
+        "validate",
+        "motivate"
+      ],
+      "response_register": [
+        "deadpan",
+        "serious"
+      ],
+      "reference_clip": "/media/references/Angie_Dickinson/angie_dickinson_ref_01.wav",
+      "voice_description": "Cool, glamorous, slightly husky. Controlled, confident, stylish. Recording style: 1970s US network drama, warm and controlled.",
+      "voice_archetype": "Cool, glamorous, slightly husky. Controlled, confident, stylish.",
+      "clip_on_disk": false
+    },
+    {
+      "name": "Audrey_Hepburn",
+      "response_type": [
+        "console",
+        "validate"
+      ],
+      "response_register": [
+        "serious",
+        "light"
+      ],
+      "reference_clip": "/media/references/Audrey_Hepburn/audrey_hepburn_ref_01.wav",
+      "voice_description": "Soft, elegant, breathy. Gentle, refined, delicate, emotionally warm. Recording style: 1960s Hollywood, airy and intimate, light compression.",
+      "voice_archetype": "Soft, elegant, breathy. Gentle, refined, delicate, emotionally warm.",
+      "clip_on_disk": false
+    },
+    {
+      "name": "BBC_Female_Newsreader",
+      "response_type": [
+        "inform",
+        "validate"
+      ],
+      "response_register": [
+        "serious",
+        "deadpan"
+      ],
+      "reference_clip": "/media/references/BBC_Female_Newsreader/bbc_female_newsreader_ref_01.wav",
+      "voice_description": "Precise, authoritative, composed. Clear upper-RP female. No emotion leaked — pure information delivery. Recording style: 1960s BBC news broadcast, crisp mono.",
+      "voice_archetype": "Precise, authoritative, composed. Clear upper-RP female. No emotion leaked — pure information delivery.",
+      "clip_on_disk": false
+    },
+    {
+      "name": "Barbara_Stanwyck",
+      "response_type": [
+        "challenge",
+        "motivate"
+      ],
+      "response_register": [
+        "serious",
+        "dramatic"
+      ],
+      "reference_clip": "/media/references/Barbara_Stanwyck/barbara_stanwyck_ref_01.wav",
+      "voice_description": "Tough, grounded, no-nonsense. Strong, direct, authoritative. Recording style: 1950s Hollywood drama, dry and direct, minimal reverb.",
+      "voice_archetype": "Tough, grounded, no-nonsense. Strong, direct, authoritative.",
+      "clip_on_disk": false
+    },
+    {
+      "name": "Cloris_Leachman",
+      "response_type": [
+        "amuse",
+        "challenge"
+      ],
+      "response_register": [
+        "light",
+        "deadpan"
+      ],
+      "reference_clip": "/media/references/Cloris_Leachman/cloris_leachman_ref_01.wav",
+      "voice_description": "Comedic, sharp, expressive. Sarcastic, witty, characterful. Recording style: 1970s US sitcom, lively and punchy.",
+      "voice_archetype": "Comedic, sharp, expressive. Sarcastic, witty, characterful.",
+      "clip_on_disk": false
+    },
+    {
+      "name": "Darth_Vader_Jones",
+      "response_type": [
+        "challenge",
+        "motivate"
+      ],
+      "response_register": [
+        "dramatic",
+        "serious"
+      ],
+      "reference_clip": "/media/references/Darth_Vader_Jones/darth_vader_jones_ref_01.wav",
+      "voice_description": "Resonant menace, absolute authority. Every word a command. Breathing part of the performance. Recording style: 1970s film audio, deep, slightly processed.",
+      "voice_archetype": "Resonant menace, absolute authority. Every word a command. Breathing part of the performance.",
+      "clip_on_disk": false
+    },
+    {
+      "name": "David_Attenborough",
+      "response_type": [
+        "validate",
+        "amuse",
+        "inform",
+        "console"
+      ],
+      "response_register": [
+        "deadpan",
+        "serious"
+      ],
+      "reference_clip": "/media/references/David_Attenborough/david_attenborough_ref_01.wav",
+      "voice_description": "Reverent, precise, gently astonished. Finds the extraordinary in the ordinary. Unhurried observation. Recording style: 1970s BBC nature documentary, clean, intimate.",
+      "voice_archetype": "Reverent, precise, gently astonished. Finds the extraordinary in the ordinary. Unhurried observation.",
+      "clip_on_disk": false
+    },
+    {
+      "name": "Debbie_Reynolds",
+      "response_type": [
+        "celebrate",
+        "amuse"
+      ],
+      "response_register": [
+        "light"
+      ],
+      "reference_clip": "/media/references/Debbie_Reynolds/debbie_reynolds_ref_01.wav",
+      "voice_description": "Cheerful, musical, expressive. Bubbly, lively, wholesome. Recording style: 1950s American variety, warm and bright.",
+      "voice_archetype": "Cheerful, musical, expressive. Bubbly, lively, wholesome.",
+      "clip_on_disk": false
+    },
+    {
+      "name": "Diana_Dors",
+      "response_type": [
+        "amuse",
+        "celebrate"
+      ],
+      "response_register": [
+        "light",
+        "deadpan"
+      ],
+      "reference_clip": "/media/references/Diana_Dors/diana_dors_ref_01.wav",
+      "voice_description": "Playful, sultry, confident. Breathy glamour with British cheekiness. Recording style: 1950s British film, warm mono, slight tape saturation.",
+      "voice_archetype": "Playful, sultry, confident. Breathy glamour with British cheekiness.",
+      "clip_on_disk": false
+    },
+    {
+      "name": "Diana_Rigg",
+      "response_type": [
+        "validate",
+        "challenge"
+      ],
+      "response_register": [
+        "serious",
+        "deadpan"
+      ],
+      "reference_clip": "/media/references/Diana_Rigg/diana_rigg_ref_01.wav",
+      "voice_description": "Elegant, razor-sharp, poised. Cool confidence, mid-to-upper RP, dry wit, controlled power. Recording style: 1960s-70s BBC drama, polished RP, tight dynamic control.",
+      "voice_archetype": "Elegant, razor-sharp, poised. Cool confidence, mid-to-upper RP, dry wit, controlled power.",
+      "clip_on_disk": false
+    },
+    {
+      "name": "Elizabeth_Taylor",
+      "response_type": [
+        "motivate",
+        "validate"
+      ],
+      "response_register": [
+        "dramatic",
+        "serious"
+      ],
+      "reference_clip": "/media/references/Elizabeth_Taylor/elizabeth_taylor_ref_01.wav",
+      "voice_description": "Rich, dramatic, regal. Smooth, powerful, emotionally intense. Recording style: 1960s Hollywood film, lush and wide, some room.",
+      "voice_archetype": "Rich, dramatic, regal. Smooth, powerful, emotionally intense.",
+      "clip_on_disk": false
+    },
+    {
+      "name": "Franklin_D_Roosevelt",
+      "response_type": [
+        "motivate",
+        "console",
+        "validate"
+      ],
+      "response_register": [
+        "serious",
+        "dramatic"
+      ],
+      "reference_clip": "/media/references/Franklin_D._Roosevelt/franklin_d_roosevelt_ref_01.wav",
+      "voice_description": "Patrician warmth. Paternal, steady, fireside intimacy. Reassuring authority. Recording style: 1930s-40s radio broadcast, narrow bandwidth, warm low-end.",
+      "voice_archetype": "Patrician warmth. Paternal, steady, fireside intimacy. Reassuring authority.",
+      "clip_on_disk": false
+    },
+    {
+      "name": "Gandalf_McKellen",
+      "response_type": [
+        "motivate",
+        "validate",
+        "challenge"
+      ],
+      "response_register": [
+        "serious",
+        "dramatic"
+      ],
+      "reference_clip": "/media/references/Gandalf_McKellen/gandalf_mckellen_ref_01.wav",
+      "voice_description": "Ancient wisdom, thunderous authority, gentle cryptic warmth. The weight of ages behind every word. Recording style: Epic film audio, deep, resonant, slight reverb.",
+      "voice_archetype": "Ancient wisdom, thunderous authority, gentle cryptic warmth. The weight of ages behind every word.",
+      "clip_on_disk": false
+    },
+    {
+      "name": "Goofy",
+      "response_type": [
+        "amuse",
+        "celebrate",
+        "console"
+      ],
+      "response_register": [
+        "light"
+      ],
+      "reference_clip": "/media/references/Goofy/goofy_ref_01.wav",
+      "voice_description": "Bumbling, loveable, guileless. That laugh, generous spirit — things go wrong but life is fun. Recording style: 1960s Disney studio, warm, playful.",
+      "voice_archetype": "Bumbling, loveable, guileless. That laugh, generous spirit — things go wrong but life is fun.",
+      "clip_on_disk": false
+    },
+    {
+      "name": "Honor_Blackman",
+      "response_type": [
+        "motivate",
+        "challenge"
+      ],
+      "response_register": [
+        "serious",
+        "deadpan"
+      ],
+      "reference_clip": "/media/references/Honor_Blackman/honor_blackman_ref_01.wav",
+      "voice_description": "Deep, confident, seductive. Controlled, powerful, unmistakably cool. Recording style: 1960s BBC drama, deep register, controlled compression.",
+      "voice_archetype": "Deep, confident, seductive. Controlled, powerful, unmistakably cool.",
+      "clip_on_disk": false
+    },
+    {
+      "name": "James_Bond_Connery",
+      "response_type": [
+        "celebrate",
+        "amuse",
+        "validate"
+      ],
+      "response_register": [
+        "deadpan"
+      ],
+      "reference_clip": "/media/references/James_Bond_Connery/james_bond_connery_ref_01.wav",
+      "voice_description": "1960s spy cool. Dry wit, effortless confidence, slight Scottish edge. Never rattled. Recording style: 1960s film audio, clean, slightly warm, confident presence.",
+      "voice_archetype": "1960s spy cool. Dry wit, effortless confidence, slight Scottish edge. Never rattled.",
+      "clip_on_disk": false
+    },
+    {
+      "name": "Jane_Fonda",
+      "response_type": [
+        "challenge",
+        "motivate"
+      ],
+      "response_register": [
+        "serious"
+      ],
+      "reference_clip": "/media/references/Jane_Fonda/jane_fonda_ref_01.wav",
+      "voice_description": "Clear, confident, modern. Assertive, intelligent, energetic. Recording style: 1970s American, clean and forward, natural dynamic range.",
+      "voice_archetype": "Clear, confident, modern. Assertive, intelligent, energetic.",
+      "clip_on_disk": false
+    },
+    {
+      "name": "Joanna_Lumley",
+      "response_type": [
+        "validate",
+        "console"
+      ],
+      "response_register": [
+        "light",
+        "deadpan"
+      ],
+      "reference_clip": "/media/references/Joanna_Lumley/joanna_lumley_ref_01.wav",
+      "voice_description": "Velvety, posh, glamorous. Smooth, warm, slightly husky, effortless charm. Recording style: 1970s ITV colour drama, warm midrange, light saturation.",
+      "voice_archetype": "Velvety, posh, glamorous. Smooth, warm, slightly husky, effortless charm.",
+      "clip_on_disk": false
+    },
+    {
+      "name": "John_F_Kennedy",
+      "response_type": [
+        "motivate",
+        "celebrate",
+        "validate"
+      ],
+      "response_register": [
+        "serious",
+        "dramatic"
+      ],
+      "reference_clip": "/media/references/John_F._Kennedy/john_f_kennedy_ref_01.wav",
+      "voice_description": "New England authority. Crisp, visionary, measured urgency. Youth and gravitas combined. Recording style: 1960s American TV broadcast, clean but period-compressed.",
+      "voice_archetype": "New England authority. Crisp, visionary, measured urgency. Youth and gravitas combined.",
+      "clip_on_disk": false
+    },
+    {
+      "name": "Judi_Dench",
+      "response_type": [
+        "motivate",
+        "validate"
+      ],
+      "response_register": [
+        "serious",
+        "dramatic"
+      ],
+      "reference_clip": "/media/references/Judi_Dench/judi_dench_ref_01.wav",
+      "voice_description": "Strong, authoritative, expressive. Precise diction, emotional depth, commanding presence. Recording style: 1970s BBC drama, restrained but resonant.",
+      "voice_archetype": "Strong, authoritative, expressive. Precise diction, emotional depth, commanding presence.",
+      "clip_on_disk": false
+    },
+    {
+      "name": "Julie_Andrews",
+      "response_type": [
+        "motivate",
+        "console"
+      ],
+      "response_register": [
+        "light",
+        "serious"
+      ],
+      "reference_clip": "/media/references/Julie_Andrews/julie_andrews_ref_01.wav",
+      "voice_description": "Crystal-clear diction, musical, warm. Bright, articulate, nurturing, perfect pitch in speech. Recording style: 1960s Hollywood film, bright EQ, clean studio presence.",
+      "voice_archetype": "Crystal-clear diction, musical, warm. Bright, articulate, nurturing, perfect pitch in speech.",
+      "clip_on_disk": false
+    },
+    {
+      "name": "Katharine_Hepburn",
+      "response_type": [
+        "challenge",
+        "motivate"
+      ],
+      "response_register": [
+        "serious",
+        "deadpan"
+      ],
+      "reference_clip": "/media/references/Katharine_Hepburn/katharine_hepburn_ref_01.wav",
+      "voice_description": "Clipped, rapid, confident. Sharp wit, intellectual, unmistakable cadence. Recording style: 1940s-60s Hollywood, crisp and clipped, bright upper mids.",
+      "voice_archetype": "Clipped, rapid, confident. Sharp wit, intellectual, unmistakable cadence.",
+      "clip_on_disk": false
+    },
+    {
+      "name": "King_Charles_III",
+      "response_type": [
+        "validate",
+        "inform"
+      ],
+      "response_register": [
+        "serious"
+      ],
+      "reference_clip": "/media/references/King_Charles_III/king_charles_iii_ref_01.wav",
+      "voice_description": "Thoughtful, slightly formal, reflective. Modern British sovereign, duty and earnestness. Recording style: 1970s BBC broadcast, clean, warm midrange.",
+      "voice_archetype": "Thoughtful, slightly formal, reflective. Modern British sovereign, duty and earnestness.",
+      "clip_on_disk": false
+    },
+    {
+      "name": "King_George_VI",
+      "response_type": [
+        "console",
+        "validate",
+        "motivate"
+      ],
+      "response_register": [
+        "serious",
+        "dramatic"
+      ],
+      "reference_clip": "/media/references/King_George_VI/king_george_vi_ref_01.wav",
+      "voice_description": "Earnest, determined, quietly brave. Speech hard-won, warmth beneath formality. Recording style: 1940s BBC wartime radio, narrow bandwidth, slight hiss.",
+      "voice_archetype": "Earnest, determined, quietly brave. Speech hard-won, warmth beneath formality.",
+      "clip_on_disk": false
+    },
+    {
+      "name": "Lucille_Ball",
+      "response_type": [
+        "amuse",
+        "celebrate"
+      ],
+      "response_register": [
+        "light"
+      ],
+      "reference_clip": "/media/references/Lucille_Ball/lucille_ball_ref_01.wav",
+      "voice_description": "Expressive, comedic, chaotic energy. Big emotional range, fast shifts, iconic rasp. Recording style: 1950s CBS sitcom, period mono, light buzz and tape warmth.",
+      "voice_archetype": "Expressive, comedic, chaotic energy. Big emotional range, fast shifts, iconic rasp.",
+      "clip_on_disk": false
+    },
+    {
+      "name": "Martin_Luther_King_Jr",
+      "response_type": [
+        "motivate",
+        "console",
+        "validate"
+      ],
+      "response_register": [
+        "serious",
+        "dramatic"
+      ],
+      "reference_clip": "/media/references/Martin_Luther_King_Jr/martin_luther_king_jr_ref_01.wav",
+      "voice_description": "Soaring, rhythmic, preacher cadence. Moral urgency, rising repetition, deep resonance. Recording style: 1960s American civil rights broadcast, slight AM radio compression.",
+      "voice_archetype": "Soaring, rhythmic, preacher cadence. Moral urgency, rising repetition, deep resonance.",
+      "clip_on_disk": false
+    },
+    {
+      "name": "Mary_Tyler_Moore",
+      "response_type": [
+        "motivate",
+        "celebrate"
+      ],
+      "response_register": [
+        "light"
+      ],
+      "reference_clip": "/media/references/Mary_Tyler_Moore/mary_tyler_moore_ref_01.wav",
+      "voice_description": "Bright, modern, upbeat. Friendly, optimistic, contemporary American tone. Recording style: 1970s US network sitcom, clean and bright.",
+      "voice_archetype": "Bright, modern, upbeat. Friendly, optimistic, contemporary American tone.",
+      "clip_on_disk": false
+    },
+    {
+      "name": "Mickey_Mouse",
+      "response_type": [
+        "celebrate",
+        "amuse",
+        "motivate"
+      ],
+      "response_register": [
+        "light"
+      ],
+      "reference_clip": "/media/references/Mickey_Mouse/mickey_mouse_ref_01.wav",
+      "voice_description": "Eternal cheerful optimism. High-pitched, warm, delighted by everything. Boundless goodwill. Recording style: 1960s Disney studio, bright, slightly processed.",
+      "voice_archetype": "Eternal cheerful optimism. High-pitched, warm, delighted by everything. Boundless goodwill.",
+      "clip_on_disk": false
+    },
+    {
+      "name": "Optimus_Prime",
+      "response_type": [
+        "motivate",
+        "validate",
+        "challenge"
+      ],
+      "response_register": [
+        "serious",
+        "dramatic"
+      ],
+      "reference_clip": "/media/references/Optimus_Prime/optimus_prime_ref_01.wav",
+      "voice_description": "Noble Autobot leader. Deep, measured, heroic. Every word carries the weight of responsibility. Recording style: 1980s animated series, slightly processed deep voice.",
+      "voice_archetype": "Noble Autobot leader. Deep, measured, heroic. Every word carries the weight of responsibility.",
+      "clip_on_disk": false
+    },
+    {
+      "name": "Penelope_Keith",
+      "response_type": [
+        "challenge",
+        "validate"
+      ],
+      "response_register": [
+        "deadpan",
+        "serious"
+      ],
+      "reference_clip": "/media/references/Penelope_Keith/penelope_keith_ref_01.wav",
+      "voice_description": "Tall, posh, arch, witty. Cut-glass RP, commanding, dry humour. Recording style: 1970s BBC sitcom, crisp and precise.",
+      "voice_archetype": "Tall, posh, arch, witty. Cut-glass RP, commanding, dry humour.",
+      "clip_on_disk": false
+    },
+    {
+      "name": "Queen_Elizabeth_II",
+      "response_type": [
+        "validate",
+        "console",
+        "motivate"
+      ],
+      "response_register": [
+        "serious"
+      ],
+      "reference_clip": "/media/references/Queen_Elizabeth_II/queen_elizabeth_ii_ref_01.wav",
+      "voice_description": "Measured, dignified, upper RP. Quiet authority, duty above self, composed in all weathers. Recording style: 1960s BBC broadcast, formal, clean mono.",
+      "voice_archetype": "Measured, dignified, upper RP. Quiet authority, duty above self, composed in all weathers.",
+      "clip_on_disk": false
+    },
+    {
+      "name": "Sergeant_Hartman",
+      "response_type": [
+        "challenge",
+        "motivate"
+      ],
+      "response_register": [
+        "dramatic",
+        "serious"
+      ],
+      "reference_clip": "/media/references/Military_Drill_Instructor/sergeant_hartman_ref_01.wav",
+      "voice_description": "Full Metal Jacket drill instructor. Brutal, relentless, mercilessly direct. No softness anywhere. Recording style: 1980s film audio, dry, punchy, close-mic presence.",
+      "voice_archetype": "Full Metal Jacket drill instructor. Brutal, relentless, mercilessly direct. No softness anywhere.",
+      "clip_on_disk": false
+    },
+    {
+      "name": "Sheila_Hancock",
+      "response_type": [
+        "console",
+        "validate"
+      ],
+      "response_register": [
+        "serious"
+      ],
+      "reference_clip": "/media/references/Sheila_Hancock/sheila_hancock_ref_01.wav",
+      "voice_description": "Grounded, articulate, emotionally rich. Strong presence, empathetic tone. Recording style: 1970s BBC drama, warm and grounded.",
+      "voice_archetype": "Grounded, articulate, emotionally rich. Strong presence, empathetic tone.",
+      "clip_on_disk": false
+    },
+    {
+      "name": "Wendy_Craig",
+      "response_type": [
+        "console",
+        "amuse"
+      ],
+      "response_register": [
+        "light"
+      ],
+      "reference_clip": "/media/references/Wendy_Craig/wendy_craig_ref_01.wav",
+      "voice_description": "Warm, comedic, slightly flustered. Soft RP with domestic charm. Recording style: 1970s ITV sitcom, warm and slightly roomy.",
+      "voice_archetype": "Warm, comedic, slightly flustered. Soft RP with domestic charm.",
+      "clip_on_disk": false
+    }
+  ]
+}

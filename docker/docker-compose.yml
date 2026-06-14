@@ -1,0 +1,133 @@
+services:
+
+  f5-tts:
+    build: ./f5-tts
+    container_name: f5-tts
+    restart: unless-stopped
+    runtime: nvidia
+    labels:
+      net.unraid.docker.icon: "http://192.168.1.33:5005/files/icons/bumblebee-f5-tts-icon.png"
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=0      # RTX 3060 (index 0) — leaves 3090 free for Ollama
+      - HF_HOME=/tts-models
+    ports:
+      - "5003:5003"
+    volumes:
+      - /mnt/user/appdata/f5-tts/models:/tts-models
+      - /mnt/user/media/bumblebee:/media
+
+  parler-tts:
+    build: ./parler-tts
+    container_name: parler-tts
+    restart: unless-stopped
+    runtime: nvidia
+    labels:
+      net.unraid.docker.icon: "http://192.168.1.33:5005/files/icons/bumblebee-parler-tts-icon.png"
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=0      # RTX 3060 (index 0) — shares with f5-tts (idle when not in use)
+      - HF_HOME=/tts-models
+    ports:
+      - "5004:5004"
+    volumes:
+      - /mnt/user/appdata/parler-tts/models:/tts-models
+      - /mnt/user/media/bumblebee:/media
+
+  coqui-tts:
+    build: ./coqui-tts
+    container_name: coqui-tts
+    restart: unless-stopped
+    runtime: nvidia
+    labels:
+      net.unraid.docker.icon: "http://192.168.1.33:5005/files/icons/bumblebee-coqui-tts-icon.png"
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=1      # RTX 3090 (index 1) — 3060 is full
+      - COQUI_TTS_HOME=/tts-models
+      - COQUI_TOS_AGREED=1
+    ports:
+      - "5002:5002"
+    volumes:
+      - /mnt/user/appdata/coqui-tts/models:/tts-models
+      - /mnt/user/media/bumblebee:/media
+
+  chatterbox:
+    build: ./chatterbox
+    container_name: chatterbox
+    restart: unless-stopped
+    runtime: nvidia
+    labels:
+      net.unraid.docker.icon: "http://192.168.1.33:5005/files/icons/bumblebee-chatterbox-icon.png"
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=0      # RTX 3060 (index 0)
+      - HF_HOME=/tts-models
+    ports:
+      - "5006:5006"
+    volumes:
+      - /mnt/user/appdata/chatterbox/models:/tts-models
+      - /mnt/user/media/bumblebee:/media
+
+  audio-converter:
+    build: ./audio-converter
+    container_name: audio-converter
+    restart: unless-stopped
+    labels:
+      net.unraid.docker.icon: "http://192.168.1.33:5005/files/icons/bumblebee-audio-converter-icon.png"
+    ports:
+      - "5007:5007"
+    volumes:
+      - /mnt/user/media/bumblebee:/media
+
+  xiaozhi-gateway:
+    build: ./xiaozhi-gateway
+    container_name: xiaozhi-gateway
+    restart: unless-stopped
+    labels:
+      net.unraid.docker.icon: "http://192.168.1.33:5005/files/icons/bumblebee-xiaozhi-gateway-icon.png"
+    environment:
+      - WHISPER_URL=http://whisper-stt:5009
+      - ORCHESTRATOR_URL=http://bumblebee-orchestrator:5005
+      - N8N_WEBHOOK_URL=     # leave blank for test mode; set to https://bumblebee.rooroo.uk/webhook/... for production
+    ports:
+      - "5010:5010"
+
+  whisper-stt:
+    build: ./whisper-stt
+    container_name: whisper-stt
+    restart: unless-stopped
+    runtime: nvidia
+    labels:
+      net.unraid.docker.icon: "http://192.168.1.33:5005/files/icons/bumblebee-whisper-stt-icon.png"
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=1      # RTX 3090 (index 1) — lightweight, sits alongside coqui
+      - WHISPER_MODEL_DIR=/whisper-models
+      - WHISPER_MODEL=base
+    ports:
+      - "5009:5009"
+    volumes:
+      - /mnt/user/appdata/whisper-stt/models:/whisper-models
+
+  orchestrator:
+    build: ./orchestrator
+    container_name: bumblebee-orchestrator
+    restart: unless-stopped
+    labels:
+      net.unraid.docker.icon: "http://192.168.1.33:5005/files/icons/bumblebee-orchestrator-icon.png"
+    environment:
+      - F5_TTS_URL=http://f5-tts:5003
+      - PARLER_TTS_URL=http://parler-tts:5004
+      - COQUI_TTS_URL=http://coqui-tts:5002
+      - CHATTERBOX_URL=http://chatterbox:5006
+      - AUDIO_CONVERTER_URL=http://audio-converter:5007
+      - MEDIA_DIR=/media/generated
+      - PUBLIC_BASE_URL=http://192.168.1.33:5005/files
+      - DESCRIPTOR_PATH=/media/character_descriptor.json
+      - REFERENCES_DIR=/media/references
+    ports:
+      - "5005:5005"
+    volumes:
+      - /mnt/user/media/bumblebee:/media
+    depends_on:
+      - f5-tts
+      - parler-tts
+      - coqui-tts
+      - chatterbox
+      - audio-converter
