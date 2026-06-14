@@ -10,6 +10,11 @@ dated, and pushed to GitHub along with any docs/Wiki updates — so the reposito
 always reflects the project's true current status and the choices made.
 
 ## [Unreleased]
+### Added
+- Wiki landing page (`docs/Home.md`) and navigation sidebar (`docs/_Sidebar.md`) — `docs/`
+  is now a complete, ready-to-publish mirror of the GitHub Wiki.
+- `scripts/mirror_wiki.py` — one-command sync of `docs/` → the GitHub Wiki (rewrites
+  internal `*.md` links to wiki form). Run once the wiki's first page exists.
 
 ## [0.2.0] - 2026-06-14
 ### Added
