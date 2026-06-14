@@ -17,7 +17,7 @@ The stack is **8 containers** built from `docker/docker-compose.yml`, plus share
 
 **Shared services:** Ollama `:11434` and Redis `:6379` on `bumblebee_default`; **n8n `:5678` on macvlan `br0`** (LAN IP `192.168.1.47`).
 
-> **n8n networking gotcha.** n8n is on Unraid's macvlan (`br0`), not `bumblebee_default`. A bridge container (like `xiaozhi-gateway`) **cannot reach n8n on the same host** — neither by hostname (different network) nor by LAN IP `192.168.1.47` (Unraid blocks macvlan↔bridge same-host traffic; you get `All connection attempts failed`). So the gateway's `N8N_WEBHOOK_URL` is set to the **public Cloudflare Tunnel webhook** `https://bumblebee.rooroo.uk/webhook/bumblebee`, which dials outbound and works regardless. Leave `N8N_WEBHOOK_URL` blank to run the gateway in orchestrator-direct **test mode** (Parler, no n8n).
+> **n8n networking gotcha.** n8n is on Unraid's macvlan (`br0`), not `bumblebee_default`. A bridge container (like `xiaozhi-gateway`) **cannot reach n8n on the same host** — neither by hostname (different network) nor by LAN IP `192.168.1.47` (Unraid blocks macvlan↔bridge same-host traffic; you get `All connection attempts failed`). So the gateway's `N8N_WEBHOOK_URL` is set to the **public Cloudflare Tunnel webhook** `https://<your-tunnel-domain>/webhook/bumblebee`, which dials outbound and works regardless. Leave `N8N_WEBHOOK_URL` blank to run the gateway in orchestrator-direct **test mode** (Parler, no n8n).
 
 ### GPU split
 

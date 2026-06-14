@@ -14,7 +14,7 @@ flowchart TB
     end
 
     subgraph Edge[Public edge]
-      CF[Cloudflare Tunnel<br/>bumblebee.rooroo.uk]
+      CF[Cloudflare Tunnel<br/>your public webhook]
     end
 
     subgraph N8NHOST[n8n host · 192.168.1.47]
@@ -54,7 +54,7 @@ flowchart TB
 
 All TTS/LLM inference stays **local** on Unraid. The two GPUs are split: the **RTX 3060** runs F5/Parler/Chatterbox, the **RTX 3090** runs XTTS, Whisper, and Ollama.
 
-> **Networking gotcha — the gateway reaches n8n via the public webhook, not the LAN IP.** n8n runs on an Unraid **macvlan (`br0`)** interface, while `xiaozhi-gateway` is on the **`bumblebee_default` bridge**. Unraid blocks macvlan↔bridge traffic on the *same host*, so the gateway cannot hit n8n's `192.168.1.47:5678` directly (it fails with `All connection attempts failed`). It instead posts to the **Cloudflare Tunnel** URL (`https://bumblebee.rooroo.uk/webhook/bumblebee`), which dials outbound and sidesteps the isolation. The orchestrator's WAV URL (`192.168.1.33:5005`) *is* reachable from the bridge — that's UR1's own host IP, not a macvlan peer.
+> **Networking gotcha — the gateway reaches n8n via the public webhook, not the LAN IP.** n8n runs on an Unraid **macvlan (`br0`)** interface, while `xiaozhi-gateway` is on the **`bumblebee_default` bridge**. Unraid blocks macvlan↔bridge traffic on the *same host*, so the gateway cannot hit n8n's `192.168.1.47:5678` directly (it fails with `All connection attempts failed`). It instead posts to the **Cloudflare Tunnel** URL (`https://<your-tunnel-domain>/webhook/bumblebee`), which dials outbound and sidesteps the isolation. The orchestrator's WAV URL (`192.168.1.33:5005`) *is* reachable from the bridge — that's UR1's own host IP, not a macvlan peer.
 
 ---
 

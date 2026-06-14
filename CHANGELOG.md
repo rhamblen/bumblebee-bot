@@ -27,7 +27,7 @@ always reflects the project's true current status and the choices made.
 
 ### Changed
 - `docker/docker-compose.yml` — `xiaozhi-gateway` `N8N_WEBHOOK_URL` set to the **public
-  Cloudflare webhook** `https://bumblebee.rooroo.uk/webhook/bumblebee`, **not** the LAN IP.
+  Cloudflare webhook** (`https://<your-tunnel-domain>/webhook/bumblebee`), **not** the LAN IP.
   n8n runs on Unraid macvlan (`br0`) and the gateway on the `bumblebee_default` bridge;
   Unraid blocks macvlan↔bridge same-host traffic, so the LAN IP fails with
   `All connection attempts failed`. The Cloudflare tunnel dials outbound and works.

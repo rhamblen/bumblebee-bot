@@ -85,11 +85,13 @@ services:
     environment:
       - WHISPER_URL=http://whisper-stt:5009
       - ORCHESTRATOR_URL=http://bumblebee-orchestrator:5005
-      # n8n mode (C1+C2+C3 + Redis history per device); blank = orchestrator-direct test mode.
-      # MUST be the public HTTPS webhook, NOT http://192.168.1.47:5678 — n8n is on macvlan br0 (LAN IP .47)
-      # and this gateway is on the bumblebee_default bridge; macvlan<->bridge same-host traffic is blocked,
-      # so the LAN IP fails with "All connection attempts failed". Cloudflare Tunnel dials out, so HTTPS works.
-      - N8N_WEBHOOK_URL=https://bumblebee.rooroo.uk/webhook/bumblebee
+      # n8n mode (C1+C2+C3 + Redis history per device); blank/unset = orchestrator-direct test mode.
+      # Set N8N_WEBHOOK_URL in docker/.env (gitignored) to your PUBLIC HTTPS webhook, e.g.
+      #   N8N_WEBHOOK_URL=https://<your-tunnel-domain>/webhook/bumblebee
+      # Do NOT use n8n's LAN IP (http://192.168.1.47:5678): n8n is on macvlan br0 and this gateway is on
+      # the bumblebee_default bridge; Unraid blocks macvlan<->bridge on the same host, so the LAN IP fails
+      # with "All connection attempts failed". A Cloudflare Tunnel dials outbound, so the HTTPS URL works.
+      - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL:-}
       # OTA: QT (ESP32) POSTs to :5011/xiaozhi/ota/ on boot and is handed this WS url.
       # Must be the LAN-reachable host:port of the WS server below, not the docker hostname.
       - OTA_WS_URL=ws://192.168.1.33:5010/xiaozhi/v1/
