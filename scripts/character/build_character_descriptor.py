@@ -14,8 +14,8 @@ import json, os, pathlib, sys
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-VOICES_FILE    = r"D:\backup\richard\Documents\bumblebee bot\character_voices.json"
-OUTPUT_FILE    = r"D:\backup\richard\Documents\bumblebee bot\character_descriptor.json"
+VOICES_FILE    = r"D:\backup\richard\Documents\bumblebee bot\data\character_voices.json"
+OUTPUT_FILE    = r"D:\backup\richard\Documents\bumblebee bot\data\character_descriptor.json"
 REFS_HOST_ROOT = r"\\SERVER-UR1\media\bumblebee\references"   # Windows share path
 REFS_CONTAINER = "/media/references"                           # path inside Docker containers
 

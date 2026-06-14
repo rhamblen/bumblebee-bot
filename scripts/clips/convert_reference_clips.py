@@ -31,7 +31,7 @@ SUPPORTED_EXTENSIONS = {".mp3", ".mp4", ".ogg", ".m4a", ".aac", ".flac", ".webm"
 
 DEFAULT_REFERENCES_DIR = r"\\SERVER-UR1\media\bumblebee\references"
 DEFAULT_CONVERTER_URL = "http://192.168.1.33:5007"
-CHARACTER_VOICES_PATH = os.path.join(os.path.dirname(__file__), "character_voices.json")
+CHARACTER_VOICES_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data", "character_voices.json")
 
 # Inside the Docker container the share is mounted at /media — map the Windows UNC path
 CONTAINER_REFERENCES_ROOT = "/media/references"

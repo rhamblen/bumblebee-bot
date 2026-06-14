@@ -77,6 +77,28 @@ Full reasoning and lore: **[Concept & Lore](docs/Concept-and-Lore.md)**.
 
 ---
 
+## Repository structure
+
+```
+bumblebee-bot/
+├── docker/        # container source for the 8 services (compose + Dockerfiles)
+├── docs/          # full project write-up (mirrors the GitHub Wiki)
+├── data/          # character tables, FFmpeg presets, source CSV/XLSX
+├── scripts/
+│   ├── n8n/       # workflow update tools (n8n REST API)
+│   ├── clips/     # reference-clip download & conversion
+│   └── character/ # build the character descriptor table
+├── tests/         # prompt/pipeline dev test scripts
+├── notes/         # working notes & briefs
+├── CHANGELOG.md   # versioned change history
+└── VERSION
+```
+
+> **Project conventions:** changes are logged in [`CHANGELOG.md`](CHANGELOG.md) with a
+> semantic version, and the repository is pushed when a working session is confirmed
+> finished — so `main` always reflects the project's current status, structure, and the
+> choices made. Docs and the Wiki are updated alongside functional changes.
+
 ## Documentation (the detail lives in the Wiki / `docs/`)
 
 The README is the hook; everything below is written up in full under [`docs/`](docs/) and mirrored to the **[Wiki](../../wiki)**:

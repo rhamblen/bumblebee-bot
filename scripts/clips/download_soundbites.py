@@ -17,7 +17,7 @@ from openpyxl.styles import Font, PatternFill, Alignment
 
 BASE_URL   = "https://www.101soundboards.com"
 DEST_ROOT  = Path(r"\\SERVER-UR1\media\bumblebee\references")
-XLSX_PATH  = Path(r"D:\backup\richard\Documents\bumblebee bot\list of character voices.xlsx")
+XLSX_PATH  = Path(r"D:\backup\richard\Documents\bumblebee bot\data\list of character voices.xlsx")
 HEADERS    = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
 
 def sanitize(name: str) -> str:

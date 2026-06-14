@@ -27,7 +27,7 @@ import uuid
 sys.stdout.reconfigure(encoding="utf-8")
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DESCRIPTOR_FILE = os.path.join(HERE, "character_descriptor.json")
+DESCRIPTOR_FILE = os.path.join(HERE, "..", "..", "data", "character_descriptor.json")
 WF_URL = "http://192.168.1.47:5678/api/v1/workflows/ykVWvfFBHQpaC2h3"
 MODEL = "llama3.1:latest"
 
@@ -192,7 +192,7 @@ return { json: { segments, mood, characters, count: segments.length, response } 
 # ── Get API key ───────────────────────────────────────────────────────────────
 api_key = os.environ.get("N8N_API_KEY")
 if not api_key:
-    env_file = os.path.join(HERE, ".env")
+    env_file = os.path.join(HERE, "..", "..", ".env")
     if os.path.exists(env_file):
         for line in open(env_file, encoding="utf-8"):
             if line.startswith("N8N_API_KEY="):

@@ -20,7 +20,7 @@ import json, sys, urllib.request
 OLLAMA_URL = "http://192.168.1.32:11434/api/chat"
 C1_MODEL   = "llama3.1:latest"
 C3_MODEL   = "mistral:latest"
-DESCRIPTOR = r"D:\backup\richard\Documents\bumblebee bot\character_descriptor.json"
+DESCRIPTOR = r"D:\backup\richard\Documents\bumblebee bot\data\character_descriptor.json"
 N_RESPONSES = 5   # how many candidate responses to draft
 
 # ── C1: mood inference ────────────────────────────────────────────────────────

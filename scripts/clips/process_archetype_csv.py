@@ -28,9 +28,9 @@ import requests
 from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 
-DEFAULT_CSV = os.path.join(os.path.dirname(__file__), "archetype-person.csv")
+DEFAULT_CSV = os.path.join(os.path.dirname(__file__), "..", "..", "data", "archetype-person.csv")
 DEFAULT_CONVERTER_URL = "http://192.168.1.33:5007"   # audio-converter
 DEFAULT_REFERENCES_DIR = r"\\SERVER-UR1\media\bumblebee\references"
 CONTAINER_REFERENCES_ROOT = "/media/references"

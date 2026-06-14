@@ -13,7 +13,7 @@ import json, sys, urllib.request
 OLLAMA_URL = "http://192.168.1.32:11434/api/chat"
 C1_MODEL = "llama3.1:latest"
 C3_MODEL = "mistral:latest"
-CHARACTER_VOICES = r"D:\backup\richard\Documents\bumblebee bot\character_voices.json"
+CHARACTER_VOICES = r"D:\backup\richard\Documents\bumblebee bot\data\character_voices.json"
 
 # ── C1 prompt ────────────────────────────────────────────────────────────────
 

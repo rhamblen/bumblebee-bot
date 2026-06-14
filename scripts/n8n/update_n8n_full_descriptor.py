@@ -9,7 +9,7 @@ import json, os, urllib.request, sqlite3, sys
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-DESCRIPTOR_FILE = r"D:\backup\richard\Documents\bumblebee bot\character_descriptor.json"
+DESCRIPTOR_FILE = r"D:\backup\richard\Documents\bumblebee bot\data\character_descriptor.json"
 
 # ── Load character descriptor ────────────────────────────────────────────────
 
@@ -100,7 +100,7 @@ return { json: ttsData };
 
 api_key = os.environ.get("N8N_API_KEY")
 if not api_key:
-    env_file = os.path.join(os.path.dirname(__file__), ".env")
+    env_file = os.path.join(os.path.dirname(__file__), "..", "..", ".env")
     if os.path.exists(env_file):
         for line in open(env_file):
             if line.startswith("N8N_API_KEY="):
