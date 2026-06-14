@@ -1,4 +1,8 @@
-# 🐝 Bumblebee Bot
+<p align="center">
+  <img src="docker/bumblebee-icon.png" alt="Bumblebee Bot" width="420">
+</p>
+
+# Bumblebee Bot
 
 > An alien who lost his voice box. He can only answer you by replaying snippets he's intercepted from Earth's old radio and TV broadcasts — cloned into the right voice and run through a vintage filter so it sounds like a recording pulled out of the static.
 
