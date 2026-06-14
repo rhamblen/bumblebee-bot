@@ -85,9 +85,18 @@ services:
     environment:
       - WHISPER_URL=http://whisper-stt:5009
       - ORCHESTRATOR_URL=http://bumblebee-orchestrator:5005
-      - N8N_WEBHOOK_URL=     # leave blank for test mode; set to https://bumblebee.rooroo.uk/webhook/... for production
+      # n8n mode (C1+C2+C3 + Redis history per device); blank = orchestrator-direct test mode.
+      # MUST be the public HTTPS webhook, NOT http://192.168.1.47:5678 — n8n is on macvlan br0 (LAN IP .47)
+      # and this gateway is on the bumblebee_default bridge; macvlan<->bridge same-host traffic is blocked,
+      # so the LAN IP fails with "All connection attempts failed". Cloudflare Tunnel dials out, so HTTPS works.
+      - N8N_WEBHOOK_URL=https://bumblebee.rooroo.uk/webhook/bumblebee
+      # OTA: QT (ESP32) POSTs to :5011/xiaozhi/ota/ on boot and is handed this WS url.
+      # Must be the LAN-reachable host:port of the WS server below, not the docker hostname.
+      - OTA_WS_URL=ws://192.168.1.33:5010/xiaozhi/v1/
+      - OTA_WS_TOKEN=bumblebee-test
     ports:
-      - "5010:5010"
+      - "5010:5010"   # WebSocket (mic up / TTS down)
+      - "5011:5011"   # OTA / activation discovery
 
   whisper-stt:
     build: ./whisper-stt
@@ -100,6 +109,7 @@ services:
       - NVIDIA_VISIBLE_DEVICES=1      # RTX 3090 (index 1) — lightweight, sits alongside coqui
       - WHISPER_MODEL_DIR=/whisper-models
       - WHISPER_MODEL=base
+      - WHISPER_LANGUAGE=en      # pin language; blank = auto-detect
     ports:
       - "5009:5009"
     volumes:

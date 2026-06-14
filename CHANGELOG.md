@@ -11,6 +11,35 @@ always reflects the project's true current status and the choices made.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-14
+### Added
+- **ESP32 voice I/O — full hands-free round trip** in `docker/xiaozhi-gateway/server.py`:
+  WebSocket `hello` handshake, Opus decode/encode, **server-side `webrtcvad`** (detects
+  end-of-speech in auto mode, where the device never sends a stop), and real-time TTS
+  pacing with `ping_interval=None` so long replies don't trip the WS keepalive.
+- **`/ota` discovery endpoint** (port 5011, aiohttp) — the device fetches its WS URL +
+  token on boot; WS stays on 5010. Zero-reflash onboarding via the device captive portal.
+- **n8n mode for the gateway** — `N8N_WEBHOOK_URL` routes transcripts through the full
+  C1+C2+C3 character pipeline; the device **MAC is used as the Redis `session_id`** so each
+  device keeps its own conversation history.
+- Whisper hardening in `docker/whisper-stt/server.py` — `language=en`, `vad_filter=True`,
+  `condition_on_previous_text=False`, plus a gateway-side noise/hallucination guard.
+
+### Changed
+- `docker/docker-compose.yml` — `xiaozhi-gateway` `N8N_WEBHOOK_URL` set to the **public
+  Cloudflare webhook** `https://bumblebee.rooroo.uk/webhook/bumblebee`, **not** the LAN IP.
+  n8n runs on Unraid macvlan (`br0`) and the gateway on the `bumblebee_default` bridge;
+  Unraid blocks macvlan↔bridge same-host traffic, so the LAN IP fails with
+  `All connection attempts failed`. The Cloudflare tunnel dials outbound and works.
+- Docs corrected for the above: Architecture & Workflow (gateway→n8n now via Cloudflare +
+  networking note), Docker Containers (n8n is on macvlan, not `bumblebee_default`), and
+  Voice Input (ESP32 round trip is live, not foundation-only).
+
+### Known issues
+- The ESP32 test device's amp/speaker is blown — on-device playback unverifiable; output is
+  validated on Sonos meanwhile.
+- One failed TTS segment still aborts a multi-segment reply (per-segment guard is planned).
+
 ## [0.3.0] - 2026-06-14
 ### Added
 - Wiki landing page (`docs/Home.md`) and navigation sidebar (`docs/_Sidebar.md`) — `docs/`

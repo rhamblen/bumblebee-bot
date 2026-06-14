@@ -38,10 +38,10 @@ A cheap **ESP32-S3** flashed with the open **[Xiaozhi](https://github.com/78/xia
 
 | Piece | Role |
 |---|---|
-| `xiaozhi-gateway` (:5010) | Python WebSocket server; Opus decode/encode; calls Whisper + orchestrator/n8n |
+| `xiaozhi-gateway` (:5010) | Python WebSocket server; Opus decode/encode; **server-side VAD**; calls Whisper + orchestrator/n8n |
 | `whisper-stt` (:5009) | faster-whisper transcription (see [STT Options](STT-Options.md)) |
 | Opus codec | `opuslib` / `pyogg` for the device audio frames |
-| `/ota` endpoint *(planned)* | Device self-registration → multi-device |
+| `/ota` endpoint (:5011) | Device fetches its WS URL + token on boot — the hook for zero-reflash onboarding |
 
 ### Why this won
 
@@ -51,7 +51,17 @@ A cheap **ESP32-S3** flashed with the open **[Xiaozhi](https://github.com/78/xia
 
 ### Status
 
-Foundation done: Whisper container, gateway WebSocket server + `hello` handshake + Opus, and an ESP32-S3 flashed with current firmware. Remaining: split the inbound (STT) and outbound (TTS) streams into independently-validated pipelines, then add `/ota` + a device registry for multi-device. See the roadmap in the repo.
+**Full hands-free round trip is LIVE on one device** (an ESP32-S3 nicknamed "QT"). Button → WS connect → speak → server-side VAD cuts on end-of-speech → Whisper STT → n8n character pipeline → spoken reply. Working and proven:
+
+- ✅ **STT path** — Opus mic stream → incremental `webrtcvad` (the device never sends a stop in auto mode, so the gateway detects end-of-speech itself) → Whisper (`language=en`, `vad_filter`, hallucination guard).
+- ✅ **n8n mode** — the gateway posts each transcript to the full C1+C2+C3 pipeline, keyed by the device **MAC as `session_id`** so each device gets its own Redis conversation history.
+- ✅ **OTA discovery** — the device POSTs `/xiaozhi/ota/` on boot (port 5011) and is handed its WS URL; set via the device's captive portal, no re-flash.
+- ✅ **TTS streaming** — replies are re-encoded to Opus and **paced to real time** (`ping_interval=None` so long replies don't trip the WS keepalive).
+
+**Caveats / remaining:**
+- ⚠️ This device's **amp/speaker is currently blown**, so on-device playback can't be heard yet — output is validated on **Sonos** (via the n8n "Play on Sonos" node) meanwhile.
+- ⏸️ **Wake word deferred** — it's 100% on-device (ESP-SR/WakeNet on the S3) and disabled in this build; enabling it needs a menuconfig rebuild + reflash (batched with the amp repair). Button trigger works for now.
+- ⬜ **Multi-device** — device registry + per-device output routing (`self | sonos:<entity> | both`) and adding a 2nd device via `/ota` only. See the roadmap in the repo.
 
 ---
 

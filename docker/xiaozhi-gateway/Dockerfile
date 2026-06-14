@@ -9,15 +9,17 @@ RUN apt-get update && apt-get install -y \
 
 RUN pip install --no-cache-dir \
     websockets \
+    aiohttp \
     opuslib \
     soundfile \
     numpy \
     httpx \
-    scipy
+    scipy \
+    webrtcvad-wheels
 
 WORKDIR /app
 COPY server.py .
 
-EXPOSE 5010
+EXPOSE 5010 5011
 
 CMD ["python", "server.py"]
