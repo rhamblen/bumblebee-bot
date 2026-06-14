@@ -10,16 +10,19 @@ dated, and pushed to GitHub along with any docs/Wiki updates — so the reposito
 always reflects the project's true current status and the choices made.
 
 ## [Unreleased]
+
+## [0.3.0] - 2026-06-14
 ### Added
 - Wiki landing page (`docs/Home.md`) and navigation sidebar (`docs/_Sidebar.md`) — `docs/`
-  is now a complete, ready-to-publish mirror of the GitHub Wiki.
+  is now a complete mirror of the GitHub Wiki.
 - `scripts/mirror_wiki.py` — one-command sync of `docs/` → the GitHub Wiki (rewrites
-  internal `*.md` links to wiki form). Run once the wiki's first page exists.
+  internal `*.md` links to wiki form).
 - `LICENSE` — MIT. README license section notes that bundled third-party TTS/STT models
   keep their own terms (e.g. Coqui XTTS is non-commercial CPML).
 
 ### Changed
-- Repository made **public** on GitHub.
+- Repository made **public** on GitHub; published the Wiki (11 pages).
+- Refreshed the orchestrator container icon (`docker/bumblebee-orchestrator-icon.png`).
 
 ## [0.2.0] - 2026-06-14
 ### Added
