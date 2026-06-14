@@ -11,6 +11,20 @@ always reflects the project's true current status and the choices made.
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-06-14
+### Fixed
+- **Per-segment TTS failure guard (JB2)** in `docker/orchestrator/server.py` — a single
+  engine hiccup no longer silences a whole reply:
+  - All engine calls now route through `_post_tts_with_retry()`, which retries once on a
+    transient `5xx`/connection error before giving up (tunable via `TTS_RETRIES` and
+    `TTS_RETRY_BACKOFF`). Covers both `/speak` and `/speak-multi`.
+  - `/speak-multi` synthesizes each segment independently and **skips** one that still
+    fails, dropping it from the concat instead of aborting. It only returns `502` if
+    *every* segment fails, and the response now reports a `skipped` count.
+  - Verified live: a deliberately broken segment (good Parler + `xtts` with no
+    `reference_clip`) returned `{count:1, skipped:1}` with HTTP 200; the orchestrator log
+    confirmed `speak-multi: segment 2/2 failed, skipping … 200 OK`.
+
 ## [0.4.0] - 2026-06-14
 ### Added
 - **ESP32 voice I/O — full hands-free round trip** in `docker/xiaozhi-gateway/server.py`:
@@ -39,6 +53,7 @@ always reflects the project's true current status and the choices made.
 - The ESP32 test device's amp/speaker is blown — on-device playback unverifiable; output is
   validated on Sonos meanwhile.
 - One failed TTS segment still aborts a multi-segment reply (per-segment guard is planned).
+  *(Resolved in 0.4.1.)*
 
 ## [0.3.0] - 2026-06-14
 ### Added

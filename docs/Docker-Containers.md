@@ -34,13 +34,13 @@ FastAPI. Key routes:
 | Method | Route | Purpose |
 |---|---|---|
 | `POST` | `/speak` | Render one segment → filtered WAV, return URL |
-| `POST` | `/speak-multi` | Render N segments, concat into one WAV (0.6s gaps) |
+| `POST` | `/speak-multi` | Render N segments, concat into one WAV (0.6s gaps). Each engine call retries once on a transient failure; a segment that still fails is skipped (dropped from the concat) so one hiccup never silences the reply — only `502`s if every segment fails |
 | `GET` | `/voices` | Serve the live `character_descriptor.json` voice table |
 | `POST` | `/admin/scan-references` | Rescan `references/`, update each character's clip status, speak a confirmation |
 | `GET` | `/health` | Liveness |
 | `GET` | `/files/<uuid>.wav` | Static serving of rendered audio (this is what Sonos fetches) |
 
-Key env vars (see compose): `F5_TTS_URL`, `PARLER_TTS_URL`, `COQUI_TTS_URL`, `CHATTERBOX_URL`, `AUDIO_CONVERTER_URL`, `MEDIA_DIR=/media/generated`, `PUBLIC_BASE_URL`, `DESCRIPTOR_PATH=/media/character_descriptor.json`, `REFERENCES_DIR=/media/references`.
+Key env vars (see compose): `F5_TTS_URL`, `PARLER_TTS_URL`, `COQUI_TTS_URL`, `CHATTERBOX_URL`, `AUDIO_CONVERTER_URL`, `MEDIA_DIR=/media/generated`, `PUBLIC_BASE_URL`, `DESCRIPTOR_PATH=/media/character_descriptor.json`, `REFERENCES_DIR=/media/references`, `TTS_RETRIES=1` (extra attempts on a transient TTS failure), `TTS_RETRY_BACKOFF=1.5` (seconds between attempts).
 
 ## Building locally
 

@@ -23,6 +23,11 @@ AUDIO_CONVERTER_URL = os.environ.get("AUDIO_CONVERTER_URL", "http://audio-conver
 MEDIA_DIR = os.environ.get("MEDIA_DIR", "/media/generated")
 PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "http://192.168.1.33:5005/files")
 
+# Per-segment failure guard (JB2): retry a transient TTS hiccup once before
+# giving up, so a single engine 500 never silences a whole response.
+TTS_RETRIES = int(os.environ.get("TTS_RETRIES", "1"))          # extra attempts after the first
+TTS_RETRY_BACKOFF = float(os.environ.get("TTS_RETRY_BACKOFF", "1.5"))  # seconds between attempts
+
 # Voice mapping table (single source of truth) + reference-clip library.
 DESCRIPTOR_PATH = os.environ.get("DESCRIPTOR_PATH", "/media/character_descriptor.json")
 REFERENCES_DIR = os.environ.get("REFERENCES_DIR", "/media/references")
@@ -120,6 +125,32 @@ async def resolve_reference_clip(clip_path: str, client: httpx.AsyncClient) -> s
     return wav_path
 
 
+async def _post_tts_with_retry(
+    client: httpx.AsyncClient, url: str, payload: dict, engine: str
+) -> str:
+    """POST to a TTS engine, retrying once on a transient failure (JB2).
+
+    Returns the engine's output_path. Raises HTTPException(502) only after all
+    attempts are exhausted, so a single hiccup (e.g. a Parler 500 / GPU blip)
+    self-heals instead of silencing the response.
+    """
+    attempts = TTS_RETRIES + 1
+    last_exc: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            resp = await client.post(url, json=payload)
+            resp.raise_for_status()
+            return resp.json()["output_path"]
+        except (httpx.HTTPStatusError, httpx.RequestError) as e:
+            last_exc = e
+            log.warning("TTS %s attempt %d/%d failed: %s", engine, attempt, attempts, e)
+            if attempt < attempts:
+                await asyncio.sleep(TTS_RETRY_BACKOFF)
+    raise HTTPException(
+        status_code=502, detail=f"TTS {engine} failed after {attempts} attempts: {last_exc}"
+    )
+
+
 async def synthesize(req: SpeakRequest) -> dict:
     """Render req.text to a vintage-filtered WAV and return its public URL + path.
 
@@ -147,57 +178,38 @@ async def synthesize(req: SpeakRequest) -> dict:
             log.info("Parler selected — no clip at: %s", req.reference_clip)
 
     async with httpx.AsyncClient(timeout=300.0) as client:
-        try:
-            if effective_engine == "f5":
-                speaker_wav = await resolve_reference_clip(req.reference_clip, client)
-                resp = await client.post(
-                    f"{F5_TTS_URL}/tts",
-                    json={"text": req.text, "speaker_wav": speaker_wav, "output_dir": req.output_dir},
-                )
-            elif effective_engine == "parler":
-                resp = await client.post(
-                    f"{PARLER_TTS_URL}/tts",
-                    json={
-                        "text": req.text,
-                        "voice_description": req.voice_description or "A warm clear voice",
-                        "output_dir": req.output_dir,
-                    },
-                )
-            elif effective_engine == "xtts":
-                if not req.reference_clip:
-                    raise HTTPException(status_code=400, detail="reference_clip required for xtts engine")
-                speaker_wav = await resolve_reference_clip(req.reference_clip, client)
-                resp = await client.post(
-                    f"{COQUI_TTS_URL}/tts",
-                    json={
-                        "text": req.text,
-                        "speaker_wav": speaker_wav,
-                        "output_dir": req.output_dir,
-                    },
-                )
-            elif effective_engine == "chatterbox":
-                if not req.reference_clip:
-                    raise HTTPException(status_code=400, detail="reference_clip required for chatterbox engine")
-                speaker_wav = await resolve_reference_clip(req.reference_clip, client)
-                resp = await client.post(
-                    f"{CHATTERBOX_URL}/tts",
-                    json={
-                        "text": req.text,
-                        "speaker_wav": speaker_wav,
-                        "exaggeration": req.exaggeration,
-                        "output_dir": req.output_dir,
-                    },
-                )
-            else:
-                raise HTTPException(status_code=400, detail=f"Unknown tts_engine: {effective_engine}")
+        if effective_engine == "f5":
+            speaker_wav = await resolve_reference_clip(req.reference_clip, client)
+            tts_url = f"{F5_TTS_URL}/tts"
+            payload = {"text": req.text, "speaker_wav": speaker_wav, "output_dir": req.output_dir}
+        elif effective_engine == "parler":
+            tts_url = f"{PARLER_TTS_URL}/tts"
+            payload = {
+                "text": req.text,
+                "voice_description": req.voice_description or "A warm clear voice",
+                "output_dir": req.output_dir,
+            }
+        elif effective_engine == "xtts":
+            if not req.reference_clip:
+                raise HTTPException(status_code=400, detail="reference_clip required for xtts engine")
+            speaker_wav = await resolve_reference_clip(req.reference_clip, client)
+            tts_url = f"{COQUI_TTS_URL}/tts"
+            payload = {"text": req.text, "speaker_wav": speaker_wav, "output_dir": req.output_dir}
+        elif effective_engine == "chatterbox":
+            if not req.reference_clip:
+                raise HTTPException(status_code=400, detail="reference_clip required for chatterbox engine")
+            speaker_wav = await resolve_reference_clip(req.reference_clip, client)
+            tts_url = f"{CHATTERBOX_URL}/tts"
+            payload = {
+                "text": req.text,
+                "speaker_wav": speaker_wav,
+                "exaggeration": req.exaggeration,
+                "output_dir": req.output_dir,
+            }
+        else:
+            raise HTTPException(status_code=400, detail=f"Unknown tts_engine: {effective_engine}")
 
-            resp.raise_for_status()
-            raw_path = resp.json()["output_path"]
-
-        except httpx.HTTPStatusError as e:
-            raise HTTPException(status_code=502, detail=f"TTS service error: {e}")
-        except httpx.RequestError as e:
-            raise HTTPException(status_code=502, detail=f"TTS unreachable: {e}")
+        raw_path = await _post_tts_with_retry(client, tts_url, payload, effective_engine)
 
     try:
         await apply_vintage_filter(raw_path, final_path)
@@ -241,20 +253,34 @@ async def speak_multi(req: SpeakMultiRequest):
     if not req.segments:
         raise HTTPException(status_code=400, detail="at least one segment is required")
 
-    seg_results = []
-    for seg in req.segments:
-        seg_results.append(await synthesize(SpeakRequest(
-            text=seg.text,
-            tts_engine=seg.tts_engine,
-            reference_clip=seg.reference_clip,
-            voice_description=seg.voice_description,
-            exaggeration=seg.exaggeration,
-            output_dir=req.output_dir,
-        )))
+    # JB2: synthesize each segment independently; a segment that still fails
+    # after its retry is dropped from the concat rather than aborting the whole
+    # response. Only error out if EVERY segment fails.
+    seg_results, skipped = [], 0
+    total = len(req.segments)
+    for i, seg in enumerate(req.segments):
+        try:
+            seg_results.append(await synthesize(SpeakRequest(
+                text=seg.text,
+                tts_engine=seg.tts_engine,
+                reference_clip=seg.reference_clip,
+                voice_description=seg.voice_description,
+                exaggeration=seg.exaggeration,
+                output_dir=req.output_dir,
+            )))
+        except HTTPException as e:
+            skipped += 1
+            log.warning(
+                "speak-multi: segment %d/%d failed, skipping (%s): %r",
+                i + 1, total, e.detail, seg.text[:60],
+            )
+
+    if not seg_results:
+        raise HTTPException(status_code=502, detail="all segments failed to synthesize")
 
     if len(seg_results) == 1:
         r = seg_results[0]
-        return {"url": r["url"], "count": 1}
+        return {"url": r["url"], "count": 1, "skipped": skipped}
 
     paths = [r["path"] for r in seg_results]
     combined = os.path.join(req.output_dir, f"{uuid.uuid4()}.wav")
@@ -268,7 +294,11 @@ async def speak_multi(req: SpeakMultiRequest):
             if os.path.exists(p) and p != combined:
                 os.remove(p)
 
-    return {"url": f"{PUBLIC_BASE_URL}/{os.path.basename(combined)}", "count": len(seg_results)}
+    return {
+        "url": f"{PUBLIC_BASE_URL}/{os.path.basename(combined)}",
+        "count": len(seg_results),
+        "skipped": skipped,
+    }
 
 
 def _load_descriptor() -> dict:
