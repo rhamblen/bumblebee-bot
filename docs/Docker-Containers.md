@@ -8,7 +8,7 @@ The stack is **9 containers** built from `docker/docker-compose.yml`, plus share
 |---|---|---|---|---|
 | **orchestrator** | `bumblebee-orchestrator` | 5005 | — (CPU) | Routes to the right TTS, runs FFmpeg, stitches segments, serves WAVs at `/files/` — [details](Service-Orchestrator.md) |
 | **f5-tts** | `f5-tts` | 5003 | RTX 3060 | Voice **cloning** from a reference clip — best quality ([TTS Options](TTS-Options.md)) |
-| **parler-tts** | `parler-tts` | 5004 | RTX 3060 | **Described** voice synthesis — no reference clip needed ([TTS Options](TTS-Options.md)) |
+| **parler-tts** | `parler-tts` | 5004 | RTX 3090 | **Described** voice synthesis (bf16) — no reference clip needed ([TTS Options](TTS-Options.md)) |
 | **coqui-tts** (XTTS v2) | `coqui-tts` | 5002 | RTX 3090 | Voice cloning — alternative to F5 ([TTS Options](TTS-Options.md)) |
 | **chatterbox** | `chatterbox` | 5006 | RTX 3060 | Voice cloning with emotion/exaggeration control ([TTS Options](TTS-Options.md)) |
 | **audio-converter** | `audio-converter` | 5007 | — (CPU) | Converts MP3/MP4/OGG reference clips → WAV (with caching) — [details](Service-Audio-Converter.md) |
@@ -25,10 +25,10 @@ The stack is **9 containers** built from `docker/docker-compose.yml`, plus share
 ### GPU split
 
 Two NVIDIA cards, assigned via `NVIDIA_VISIBLE_DEVICES`:
-- **RTX 3060 (index 0):** F5, Parler, Chatterbox (they take turns — idle when not rendering).
-- **RTX 3090 (index 1):** XTTS, Whisper, and Ollama (the heavy LLM).
+- **RTX 3060 (index 0):** F5, Chatterbox (they take turns — idle when not rendering).
+- **RTX 3090 (index 1):** Parler (bf16), XTTS, Whisper, and Ollama (the heavy LLM).
 
-> The 3060 is shared by three TTS engines, so heavy concurrent use can cause contention. If you have one GPU, set every `NVIDIA_VISIBLE_DEVICES` to `0` and expect serialized rendering.
+> **Parler was moved from the 3060 to the 3090** — it's the synthesis bottleneck, the 3090 is the faster card and is idle during synthesis (Ollama has finished by then), and the 3060 was VRAM-saturated (~95%). Parler also runs in **bf16**, which ~halves its VRAM (its DAC audio decoder is kept in fp32 — `weight_norm` has no bf16 CUDA kernel). The 3060 is now shared by two TTS engines; heavy concurrent use can still cause contention. If you have one GPU, set every `NVIDIA_VISIBLE_DEVICES` to `0` and expect serialized rendering.
 
 ## Environment variable reference
 

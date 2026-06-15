@@ -8,7 +8,7 @@ services:
     labels:
       net.unraid.docker.icon: "http://192.168.1.33:5005/files/icons/bumblebee-f5-tts-icon.png"
     environment:
-      - NVIDIA_VISIBLE_DEVICES=0      # RTX 3060 (index 0) — leaves 3090 free for Ollama
+      - NVIDIA_VISIBLE_DEVICES=0      # RTX 3060 (index 0) — shares with chatterbox (Parler moved to the 3090)
       - HF_HOME=/tts-models
     ports:
       - "5003:5003"
@@ -24,7 +24,9 @@ services:
     labels:
       net.unraid.docker.icon: "http://192.168.1.33:5005/files/icons/bumblebee-parler-tts-icon.png"
     environment:
-      - NVIDIA_VISIBLE_DEVICES=0      # RTX 3060 (index 0) — shares with f5-tts (idle when not in use)
+      - NVIDIA_VISIBLE_DEVICES=1      # RTX 3090 (index 1) — Parler is the synthesis bottleneck;
+                                      # the 3090 is faster and idle during synthesis (Ollama has
+                                      # finished by then), and the 3060 was VRAM-saturated (~95%).
       - HF_HOME=/tts-models
     ports:
       - "5004:5004"

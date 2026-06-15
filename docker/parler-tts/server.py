@@ -17,6 +17,13 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 MODEL_NAME = "parler-tts/parler-tts-mini-v1"
 
+# bf16 roughly halves both generation time and VRAM vs fp32. bf16 (not fp16) avoids
+# the NaN/overflow issues fp16 can hit, and the 3090 (where Parler now runs) supports it.
+DTYPE = torch.bfloat16 if (DEVICE == "cuda" and torch.cuda.is_bf16_supported()) else torch.float32
+# torch.compile can speed generation further but is finicky with variable-length
+# autoregressive decode (recompiles), so it's opt-in via env until proven on this model.
+COMPILE = os.environ.get("PARLER_COMPILE", "0") == "1"
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -24,9 +31,40 @@ async def lifespan(app: FastAPI):
     from parler_tts import ParlerTTSForConditionalGeneration
     from transformers import AutoTokenizer
 
-    log.info(f"Loading Parler TTS ({MODEL_NAME}) on {DEVICE} ...")
-    model = ParlerTTSForConditionalGeneration.from_pretrained(MODEL_NAME).to(DEVICE)
+    log.info(f"Loading Parler TTS ({MODEL_NAME}) on {DEVICE} as {DTYPE} ...")
+    model = ParlerTTSForConditionalGeneration.from_pretrained(
+        MODEL_NAME, torch_dtype=DTYPE).to(DEVICE)
+    # The DAC audio decoder (vocoder) uses weight_norm, whose CUDA kernel is NOT
+    # implemented for bfloat16 — it raises at decode time. Keep that (fast) stage in
+    # fp32; the slow autoregressive transformer still runs in bf16, which is where the
+    # speed/VRAM win lives. Audio codes are integer indices, so there's no dtype clash.
+    if DTYPE != torch.float32:
+        model.audio_encoder.to(torch.float32)
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+
+    if COMPILE and DEVICE == "cuda":
+        try:
+            model.forward = torch.compile(model.forward)
+            log.info("torch.compile enabled on model.forward")
+        except Exception as e:  # noqa: BLE001 - never let compile setup break startup
+            log.warning("torch.compile setup failed, continuing uncompiled: %s", e)
+
+    # Warm up: the first generate() pays lazy CUDA init (and any compile) cost — do it
+    # now at startup so it never lands on a user's request.
+    try:
+        _d = tokenizer("A calm clear broadcast voice.", return_tensors="pt")
+        _p = tokenizer("Warming up the channel.", return_tensors="pt")
+        with torch.no_grad():
+            model.generate(
+                input_ids=_d.input_ids.to(DEVICE),
+                attention_mask=_d.attention_mask.to(DEVICE),
+                prompt_input_ids=_p.input_ids.to(DEVICE),
+                prompt_attention_mask=_p.attention_mask.to(DEVICE),
+            )
+        log.info("Parler TTS warmed up")
+    except Exception as e:  # noqa: BLE001 - warmup is best-effort
+        log.warning("Parler warmup failed (non-fatal): %s", e)
+
     log.info("Parler TTS ready")
     yield
 
@@ -68,8 +106,9 @@ async def synthesize(req: TTSRequest):
                 prompt_attention_mask=prompt_attention_mask,
             )
 
-        # generation shape: (1, num_samples) — squeeze to 1D numpy array
-        audio = generation.cpu().numpy().squeeze()
+        # generation shape: (1, num_samples) — cast to float32 first (numpy has no
+        # bfloat16, so a bf16 model's output must be upcast before .numpy()), squeeze to 1D.
+        audio = generation.to(torch.float32).cpu().numpy().squeeze()
         log.info(f"Audio stats — shape: {audio.shape}, dtype: {audio.dtype}, "
                  f"min: {audio.min():.4f}, max: {audio.max():.4f}, "
                  f"rms: {(audio**2).mean()**0.5:.4f}, "
@@ -88,4 +127,5 @@ async def synthesize(req: TTSRequest):
 @app.get("/health")
 async def health():
     gpu_name = torch.cuda.get_device_name(0) if DEVICE == "cuda" else None
-    return {"status": "ok", "device": DEVICE, "gpu": gpu_name, "model": MODEL_NAME}
+    return {"status": "ok", "device": DEVICE, "gpu": gpu_name, "model": MODEL_NAME,
+            "dtype": str(DTYPE), "compiled": COMPILE}

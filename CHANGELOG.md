@@ -11,6 +11,33 @@ always reflects the project's true current status and the choices made.
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-06-15
+### Changed
+- **Parler TTS — performance pass** (synthesis was ~90% of every run, all of it Parler generation):
+  - **Moved Parler to the RTX 3090** (`NVIDIA_VISIBLE_DEVICES` 0→1). It's the faster card and is
+    idle during synthesis (Ollama finishes first); the 3060 was VRAM-saturated (~95%). f5-tts /
+    chatterbox stay on the 3060.
+  - **bf16 inference** (`torch_dtype=bfloat16`) — roughly halves both generation time and VRAM vs
+    fp32 (bf16 over fp16 to avoid NaNs). bf16 output is upcast to float32 before `numpy()`/write.
+  - **Gotcha (so we don't repeat it):** a blanket bf16 cast crashes Parler's **DAC vocoder** —
+    `RuntimeError: "weight_norm_fwd_first_dim_kernel" not implemented for 'BFloat16'` (PyTorch has
+    no bf16 kernel for `weight_norm`). Fix: keep the **audio decoder in fp32**
+    (`model.audio_encoder.to(torch.float32)`) while the transformer stays bf16. Symptom was
+    misleading — `/health` passed (lifespan completed) but every `/tts` returned 500 → orchestrator
+    502, because the startup warmup swallowed the error. Likely applies to any weight_norm vocoder
+    (F5/Chatterbox/Coqui) if bf16 is tried there.
+  - **Startup warmup** — a throwaway `generate()` in `lifespan` so lazy CUDA init never lands on a
+    user request.
+  - **Opt-in `torch.compile`** via `PARLER_COMPILE=1` (default off — finicky with variable-length
+    decode), guarded so it can never break startup. `/health` now reports `dtype` + `compiled`.
+  - **Measured result: modest, not the hoped ~2×.** Per-segment generate, 3060+fp32 → 3090+bf16:
+    1-voice ~11–18s → ~17s (≈ flat); 3-voice max-seg 66.7s → 55.3s (~17%). Autoregressive decode is
+    latency/overhead-bound, not compute-bound, and generation time tracks **output length** (same run
+    showed 55s vs 16s segments). Net win is **VRAM** (Parler off the saturated 3060, bf16 ~halves its
+    footprint) plus ~17% on long multi-voice. **Further perf work parked** — next levers are bounding
+    output length (`max_new_tokens` cap + shorter composed text) and a *proper* `torch.compile` with a
+    static KV cache. Benchmark + plan in the project memory for a future session.
+
 ## [0.8.0] - 2026-06-15
 ### Added
 - **Workflow I/O log — per-step latency.** Each log entry now shows a `⏱ steps`
