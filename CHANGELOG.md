@@ -11,6 +11,26 @@ always reflects the project's true current status and the choices made.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-06-15
+### Added
+- **Workflow I/O log — per-step latency.** Each log entry now shows a `⏱ steps`
+  breakdown (`session · mood · compose · parse · synthesis · play`) from n8n's per-node
+  `executionTime` — recorded as each node runs, so it's free. Immediately reveals that
+  ~90% of a run is the `synthesis` (Call Orchestrator) step; the brain (mood+compose) is
+  only ~1–7s.
+- **Orchestrator — per-segment synthesis timing.** `/speak-multi` (and `/speak`) now return
+  a `timings` block: per-segment `generate_ms` / `filter_ms` + `engine`, plus `concat_ms`
+  and `synth_ms`. The log surfaces it as a `↳ tts` row, breaking the opaque synthesis step
+  into per-voice generate-vs-filter — confirming TTS generation is ~100% of synthesis (filter
+  <1s, concat <0.1s).
+### Changed
+- **Orchestrator — segments now synthesize concurrently.** `/speak-multi` replaced its serial
+  `for`-loop with `asyncio.gather`, so a multi-voice run overlaps its TTS calls instead of
+  running them back-to-back (the `↳ tts` row flags `∥ parallel`). Per-segment failure-skip
+  behaviour is preserved; unexpected errors still fail loud. **Validated in production** (2-voice
+  run #64): serial-equivalent 47s → 31s actual, ~34% faster. Both voices share one Parler GPU,
+  so it's a solid overlap rather than a full halving.
+
 ## [0.7.0] - 2026-06-15
 ### Added
 - **Admin console — Workflow I/O is now a live, appended pipeline-trace log.** The tab was

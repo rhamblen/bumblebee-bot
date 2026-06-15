@@ -14,7 +14,10 @@ Panels:
                         bare literals are read-only. Plus the validator findings
                         (${VARS} referenced but undefined, missing .env).
   3. Voice/character  — live table from the orchestrator GET /voices (clip vs Parler).
-  4. Workflow I/O     — a running LOG of per-run pipeline traces (heard -> mood ->
+  4. Clip Capture     — per Parler-only voice: grab a YouTube snippet (yt-dlp +
+                        ffmpeg, no VPN), preview it, then accept -> write into
+                        references/<folder>/ + re-scan (flips the voice to F5).
+  5. Workflow I/O     — a running LOG of per-run pipeline traces (heard -> mood ->
                         voices -> said -> output), flattened from n8n executions and
                         tailed forward by the browser.
 
@@ -33,7 +36,7 @@ from datetime import datetime
 import httpx
 import yaml
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -84,6 +87,16 @@ ENV_PATH = os.environ.get("ENV_PATH", "/srv/.env")
 N8N_API_URL = os.environ.get("N8N_API_URL", "")           # e.g. http://192.168.1.47:5678
 N8N_API_KEY = os.environ.get("N8N_API_KEY", "")
 N8N_WORKFLOW_ID = os.environ.get("N8N_WORKFLOW_ID", "ykVWvfFBHQpaC2h3")
+
+# Clip Capture — the console downloads YouTube snippets itself (yt-dlp + ffmpeg on
+# UR1, same home public IP as the local box that proved the workflow; no VPN). A
+# capture lands in STAGING_DIR for preview; on accept it's moved into the matching
+# references/<folder>/ and the orchestrator re-scans to flip that voice to F5.
+REFERENCES_DIR = os.environ.get("REFERENCES_DIR", "/media/references")
+STAGING_DIR = os.environ.get("CLIP_STAGING_DIR", "/tmp/clip-staging")
+COOKIES_FILE = os.environ.get("YTDLP_COOKIES", "/cookies/cookies.txt")
+CLIP_SAMPLE_RATE = 22050  # mono s16 — the F5 reference-clip format
+AUDIO_EXTS = (".wav", ".mp3", ".m4a", ".ogg", ".flac", ".aac", ".webm", ".mp4")
 
 
 # --------------------------------------------------------------------------- data
@@ -416,6 +429,19 @@ TRACE_STAGES = {
 # rather than showing a bare address. Other devices show their raw session_id.
 KNOWN_DEVICES = {"d8:3b:da:9d:18:64": "QT"}
 
+# Per-step latency: the meaningful nodes (short label), in flow order. Each n8n node
+# carries its own executionTime in runData, recorded as it ran — so the breakdown is
+# free. `Call Orchestrator` (synthesis) is the one to watch; the orchestrator returns
+# a finer per-segment split inside it (see `timings` on that node's output).
+STEP_LABELS = [
+    ("Read Session", "session"),
+    ("Ask Ollama", "mood"),
+    ("Ask Ollama Compose", "compose"),
+    ("Parse Segments", "parse"),
+    ("Call Orchestrator", "synthesis"),
+    ("Play on Sonos", "play"),
+]
+
 
 def _node_json(run: dict, node: str):
     """First output item's json for a node in runData, or None if absent/empty."""
@@ -470,6 +496,12 @@ def _trace_one(e: dict) -> dict:
                            "engine": "f5" if p.get("clip_on_disk") else "parler",
                            "text": None})
 
+    # Per-step latency (n8n node executionTime), friendly-labelled, in flow order.
+    steps = [{"label": label, "ms": _node_ms(run, node)}
+             for node, label in STEP_LABELS if _node_ms(run, node) is not None]
+    # Finer breakdown inside synthesis, if the orchestrator was instrumented.
+    synth = orch.get("timings") if isinstance(orch, dict) else None
+
     # Failure flagging: which stage broke (only meaningful when not a success).
     failed_node = rd.get("lastNodeExecuted") if status not in ("success", "running") else None
     err = rd.get("error") or {}
@@ -489,6 +521,8 @@ def _trace_one(e: dict) -> dict:
         "response_register": por.get("response_register"),
         "voices": voices,
         "output": {"url": orch.get("url"), "count": orch.get("count"), "skipped": orch.get("skipped")},
+        "steps": steps,
+        "synth": synth,
         "failed_stage": TRACE_STAGES.get(failed_node, failed_node),
         "error": err_msg if failed_node else None,
     }
@@ -512,6 +546,181 @@ async def workflow_trace(limit: int = 30) -> dict:
         return {"ok": False, "reason": f"{e} (macvlan? see N8N_API_URL note in server.py)"}
 
 
+# ----------------------------------------------------------- clip capture
+# Download a YouTube snippet straight into a staging dir, preview it, then on
+# accept move it into references/<folder>/ and ask the orchestrator to re-scan
+# (which flips that voice from Parler to F5). The download recipe mirrors the
+# proven `process_archetype_csv.py --local` path: yt-dlp section-trim → ffmpeg
+# normalise to 22050 Hz mono s16. No VPN — UR1 shares the home public IP.
+
+import shutil
+import uuid
+
+_SAFE_NAME_RE = re.compile(r"^[A-Za-z0-9_]+$")
+_HEX_RE = re.compile(r"^[0-9a-f]{32}$")
+
+
+def _safe_folder(name: str) -> str:
+    """Reject anything that isn't a bare [A-Za-z0-9_] token (no path traversal)."""
+    name = (name or "").strip()
+    if not _SAFE_NAME_RE.match(name):
+        raise ValueError(f"unsafe folder/character name: {name!r}")
+    return name
+
+
+def _ts_to_seconds(ts: str) -> float:
+    """'mm:ss' / 'h:mm:ss' / plain seconds → float seconds."""
+    ts = str(ts).strip()
+    if not ts:
+        return 0.0
+    parts = [float(p) for p in ts.split(":")]
+    if len(parts) == 1:
+        return parts[0]
+    if len(parts) == 2:
+        return parts[0] * 60 + parts[1]
+    return parts[0] * 3600 + parts[1] * 60 + parts[2]
+
+
+def clip_ready() -> dict:
+    """Are the tools + mounts present to capture clips at all?"""
+    refs_ok = os.path.isdir(REFERENCES_DIR) and os.access(REFERENCES_DIR, os.W_OK)
+    return {
+        "yt_dlp": bool(shutil.which("yt-dlp")),
+        "ffmpeg": bool(shutil.which("ffmpeg")),
+        "references_dir": REFERENCES_DIR,
+        "references_writable": refs_ok,
+        "cookies": os.path.exists(COOKIES_FILE),
+    }
+
+
+async def _run(cmd: list[str]) -> tuple[int, str]:
+    """Run a subprocess, returning (returncode, last-500-chars-of-stderr)."""
+    proc = await asyncio.create_subprocess_exec(
+        *cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE)
+    _, stderr = await proc.communicate()
+    return proc.returncode, (stderr or b"").decode(errors="replace")[-500:]
+
+
+async def clip_capture(character: str, url: str, start: str, duration) -> dict:
+    """Download [start, start+duration] of `url` to STAGING_DIR as a normalised WAV."""
+    if not (url or "").strip():
+        return {"ok": False, "reason": "url is required"}
+    rdy = clip_ready()
+    if not (rdy["yt_dlp"] and rdy["ffmpeg"]):
+        return {"ok": False, "reason": "yt-dlp / ffmpeg not available in this container"}
+
+    try:
+        start_sec = _ts_to_seconds(start)
+        dur_sec = float(duration) if duration not in (None, "") else 30.0
+    except ValueError:
+        return {"ok": False, "reason": "start/duration must be mm:ss or seconds"}
+    if dur_sec <= 0:
+        return {"ok": False, "reason": "duration must be positive"}
+    end_sec = start_sec + dur_sec
+
+    # strip the ?si=… share param that breaks yt-dlp
+    url = url.split("?si=")[0].strip()
+
+    os.makedirs(STAGING_DIR, exist_ok=True)
+    staged_id = uuid.uuid4().hex
+    raw_tmpl = os.path.join(STAGING_DIR, f"_{staged_id}_raw.%(ext)s")
+
+    cmd = [
+        "yt-dlp", "--no-playlist", "-x", "--audio-format", "wav", "--audio-quality", "0",
+        "--download-sections", f"*{start_sec}-{end_sec}", "--force-keyframes-at-cuts",
+    ]
+    if os.path.exists(COOKIES_FILE):
+        cmd += ["--cookies", COOKIES_FILE]
+    cmd += ["-o", raw_tmpl, url]
+
+    rc, err = await _run(cmd)
+    raw = os.path.join(STAGING_DIR, f"_{staged_id}_raw.wav")
+    if rc != 0 or not os.path.exists(raw):
+        # yt-dlp may not always land on .wav — find whatever it wrote
+        cand = [p for p in (os.path.join(STAGING_DIR, f) for f in os.listdir(STAGING_DIR))
+                if os.path.basename(p).startswith(f"_{staged_id}_raw")]
+        if not cand:
+            return {"ok": False, "reason": f"yt-dlp failed: {err or 'no output file'}"}
+        raw = cand[0]
+
+    staged = os.path.join(STAGING_DIR, f"{staged_id}.wav")
+    rc, err = await _run([
+        "ffmpeg", "-y", "-i", raw,
+        "-ar", str(CLIP_SAMPLE_RATE), "-ac", "1", "-sample_fmt", "s16", staged,
+    ])
+    try:
+        os.remove(raw)
+    except OSError:
+        pass
+    if rc != 0 or not os.path.exists(staged):
+        return {"ok": False, "reason": f"ffmpeg normalise failed: {err}"}
+
+    return {"ok": True, "staged_id": staged_id,
+            "seconds": round(end_sec - start_sec, 1),
+            "size": os.path.getsize(staged)}
+
+
+def _next_clip_name(folder_dir: str, folder: str) -> str:
+    """Next free '<folder_lower>_clip_NN.wav' in the destination folder."""
+    base = folder.lower()
+    pat = re.compile(rf"^{re.escape(base)}_clip_(\d+)\.wav$", re.IGNORECASE)
+    nums = []
+    if os.path.isdir(folder_dir):
+        for f in os.listdir(folder_dir):
+            m = pat.match(f)
+            if m:
+                nums.append(int(m.group(1)))
+    return f"{base}_clip_{(max(nums) + 1 if nums else 1):02d}.wav"
+
+
+async def clip_accept(character: str, staged_id: str, folder: str) -> dict:
+    """Move a staged clip into references/<folder>/ then re-scan to flip it to F5."""
+    if not _HEX_RE.match(staged_id or ""):
+        return {"ok": False, "reason": "bad staged_id"}
+    staged = os.path.join(STAGING_DIR, f"{staged_id}.wav")
+    if not os.path.exists(staged):
+        return {"ok": False, "reason": "staged clip not found (already accepted/expired?)"}
+    try:
+        folder = _safe_folder(folder or character)
+    except ValueError as e:
+        return {"ok": False, "reason": str(e)}
+
+    dest_dir = os.path.join(REFERENCES_DIR, folder)
+    try:
+        os.makedirs(dest_dir, exist_ok=True)
+        name = _next_clip_name(dest_dir, folder)
+        dest = os.path.join(dest_dir, name)
+        shutil.move(staged, dest)
+    except OSError as e:
+        return {"ok": False, "reason": f"could not write clip: {e} (references mounted rw?)"}
+
+    # Ask the orchestrator to re-scan — this flips the voice Parler→F5 and persists.
+    scan = {"ok": False}
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            r = await client.post(f"{ORCHESTRATOR_URL}/admin/scan-references")
+            r.raise_for_status()
+            scan = {"ok": True, **r.json()}
+    except Exception as e:  # noqa: BLE001
+        scan = {"ok": False, "reason": str(e)}
+
+    return {"ok": True, "saved": dest, "name": name, "scan": scan}
+
+
+def clip_reject(staged_id: str) -> dict:
+    """Discard a staged clip."""
+    if not _HEX_RE.match(staged_id or ""):
+        return {"ok": False, "reason": "bad staged_id"}
+    staged = os.path.join(STAGING_DIR, f"{staged_id}.wav")
+    try:
+        os.remove(staged)
+    except FileNotFoundError:
+        pass
+    except OSError as e:
+        return {"ok": False, "reason": str(e)}
+    return {"ok": True}
+
+
 # --------------------------------------------------------------------------- API
 
 @app.get("/api/health")
@@ -522,6 +731,22 @@ async def api_health():
 @app.get("/api/voices")
 async def api_voices():
     return await voices()
+
+
+@app.post("/api/voice-description")
+async def api_voice_description(req: Request):
+    """Proxy a single Parler voice_description edit to the orchestrator."""
+    b = await req.json()
+    payload = {"name": b.get("name", ""), "voice_description": b.get("voice_description", "")}
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            r = await client.post(f"{ORCHESTRATOR_URL}/admin/voice-description", json=payload)
+            if r.status_code >= 400:
+                detail = r.json().get("detail", r.text) if r.headers.get("content-type", "").startswith("application/json") else r.text
+                return JSONResponse({"ok": False, "reason": detail}, status_code=r.status_code)
+            return {"ok": True, **r.json()}
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse({"ok": False, "reason": str(e)}, status_code=502)
 
 
 @app.get("/api/config")
@@ -548,6 +773,40 @@ async def api_drift():
 @app.get("/api/workflow-trace")
 async def api_workflow_trace(limit: int = 30):
     return await workflow_trace(limit)
+
+
+@app.get("/api/clip-ready")
+async def api_clip_ready():
+    return clip_ready()
+
+
+@app.post("/api/clip-capture")
+async def api_clip_capture(req: Request):
+    b = await req.json()
+    return await clip_capture(b.get("character", ""), b.get("url", ""),
+                              b.get("start", "0"), b.get("duration", 30))
+
+
+@app.get("/api/clip-preview")
+async def api_clip_preview(staged_id: str):
+    if not _HEX_RE.match(staged_id or ""):
+        return JSONResponse({"error": "bad staged_id"}, status_code=400)
+    path = os.path.join(STAGING_DIR, f"{staged_id}.wav")
+    if not os.path.exists(path):
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return FileResponse(path, media_type="audio/wav")
+
+
+@app.post("/api/clip-accept")
+async def api_clip_accept(req: Request):
+    b = await req.json()
+    return await clip_accept(b.get("character", ""), b.get("staged_id", ""), b.get("folder", ""))
+
+
+@app.post("/api/clip-reject")
+async def api_clip_reject(req: Request):
+    b = await req.json()
+    return clip_reject(b.get("staged_id", ""))
 
 
 @app.get("/health")
@@ -579,6 +838,9 @@ PAGE = """<!doctype html><html><head><meta charset="utf-8">
  .ok{color:#4caf50}.bad{color:#f44336}.warn{color:#ffb300}
  .pill{padding:2px 8px;border-radius:10px;font-size:11px}
  .clip{background:#1b3a1b;color:#9f9}.parler{background:#3a2f1b;color:#fc9}
+ .vdtext{color:#fc9;white-space:pre-wrap}
+ .vdbtn{padding:2px 8px;font-size:11px}
+ textarea.vdedit{width:100%;box-sizing:border-box;background:#111;color:#eee;border:1px solid #444;border-radius:4px;padding:5px 7px;font:12px/1.4 monospace;resize:vertical}
  pre{white-space:pre-wrap;word-break:break-word;margin:0;font-size:12px}
  button.refresh{background:#ffcc00;border:0;border-radius:6px;padding:6px 12px;cursor:pointer;font-weight:600}
  /* Workflow I/O log */
@@ -684,11 +946,139 @@ async function loadVoices(){
  const d=await j('/api/voices');const c=d.characters||[];
  const clip=c.filter(x=>x.clip_on_disk).length;
  return `<p>${d.total} voices · <span class=ok>${clip} with clip (F5)</span> · ${c.length-clip} Parler-only</p>`+
-  '<table><tr><th>name</th><th>engine</th><th>response_type</th><th>register</th></tr>'+
-  c.map(x=>`<tr><td>${x.name.replace(/_/g,' ')}</td>`+
-   `<td><span class="pill ${x.clip_on_disk?'clip':'parler'}">${x.clip_on_disk?'F5 clip':'Parler'}</span></td>`+
-   `<td>${(x.response_type||[]).join(', ')}</td><td>${(x.response_register||[]).join(', ')}</td></tr>`).join('')+'</table>';
+  '<table><tr><th>name</th><th>engine</th><th>response_type</th><th>register</th>'+
+  '<th style="width:38%">parler description</th></tr>'+
+  c.map(x=>{
+   const n=x.name;
+   // Parler description shown (and editable) ONLY when there's no F5 clip; F5 rows don't use it.
+   const vd=x.clip_on_disk
+     ? '<span style="color:#666">—</span>'
+     : `<div id="vd-${n}" data-desc="${esc(x.voice_description||'')}">${vdLockedHTML(n,x.voice_description||'')}</div>`;
+   return `<tr><td>${n.replace(/_/g,' ')}</td>`+
+    `<td><span class="pill ${x.clip_on_disk?'clip':'parler'}">${x.clip_on_disk?'F5 clip':'Parler'}</span></td>`+
+    `<td>${(x.response_type||[]).join(', ')}</td><td>${(x.response_register||[]).join(', ')}</td>`+
+    `<td>${vd}</td></tr>`;
+  }).join('')+'</table>';
 }
+// Parler description: locked read-only by default; ✏ Edit unlocks JUST that cell so it
+// can't be changed by an accidental click. The live value lives in the cell's data-desc
+// attribute, so Cancel always restores it. Persisted via /api/voice-description → orchestrator.
+function vdLockedHTML(n,desc,extra){
+ const t=desc?`<span class=vdtext>${esc(desc)}</span>`:'<i style="color:#666">— no description —</i>';
+ return `${t} <button class="refresh vdbtn" onclick="vdEdit('${n}')">✏ Edit</button>${extra||''}`;
+}
+function vdRenderLocked(n,extra){
+ const td=document.getElementById('vd-'+n);
+ td.innerHTML=vdLockedHTML(n,td.dataset.desc||'',extra);
+}
+function vdEdit(n){
+ const td=document.getElementById('vd-'+n);
+ td.innerHTML='<textarea class=vdedit rows=3></textarea>'+
+   '<div style="margin-top:4px">'+
+   `<button class="refresh vdbtn" style="background:#4caf50" onclick="vdSave('${n}')">✓ Save</button> `+
+   `<button class="refresh vdbtn" style="background:#888" onclick="vdCancel('${n}')">✗ Cancel</button>`+
+   '</div>';
+ const ta=td.querySelector('.vdedit');
+ ta.value=td.dataset.desc||'';ta.focus();
+}
+function vdCancel(n){vdRenderLocked(n);}
+function vdSave(n){
+ const td=document.getElementById('vd-'+n);
+ const ta=td.querySelector('.vdedit');
+ const val=ta.value.trim();
+ const bar=td.querySelector('div');
+ if(!val){bar.innerHTML='<span class=warn>description must not be empty</span> '+bar.innerHTML;return;}
+ bar.innerHTML='⏳ saving…';
+ fetch('/api/voice-description',{method:'POST',headers:{'content-type':'application/json'},
+   body:JSON.stringify({name:n,voice_description:val})})
+  .then(r=>r.json()).then(d=>{
+   if(!d.ok){bar.innerHTML=`<span class=bad>✗ ${esc(d.reason||'failed')}</span> `+
+     `<button class="refresh vdbtn" style="background:#4caf50" onclick="vdSave('${n}')">↻ retry</button> `+
+     `<button class="refresh vdbtn" style="background:#888" onclick="vdCancel('${n}')">✗ Cancel</button>`;return;}
+   td.dataset.desc=d.voice_description;
+   vdRenderLocked(n,' <span class=ok>saved ✓</span>');
+  }).catch(e=>{bar.innerHTML=`<span class=bad>✗ ${esc(e)}</span>`;});
+}
+// ---- Clip Capture: grab a YouTube snippet per Parler-only voice, preview, accept/reject.
+// Row state lives client-side keyed by character; the table only reloads on ↻ refresh.
+const clipState={};  // name -> {staged_id, folder}
+async function loadClips(){
+ const [rdy,d]=await Promise.all([j('/api/clip-ready'),j('/api/voices')]);
+ const c=(d.characters||[]).filter(x=>!x.clip_on_disk);  // Parler-only = needs a clip
+ let h='';
+ if(!rdy.yt_dlp||!rdy.ffmpeg){
+  h+=`<div style="background:#3a1f1f;border:1px solid #f44336;border-radius:6px;padding:10px 12px;margin-bottom:12px" class=bad>`+
+     `⚠ capture unavailable — ${!rdy.yt_dlp?'yt-dlp ':''}${!rdy.ffmpeg?'ffmpeg ':''}not found in this container (rebuild needed).</div>`;
+ }else if(!rdy.references_writable){
+  h+=`<div style="background:#3a2f1b;border:1px solid #ffb300;border-radius:6px;padding:10px 12px;margin-bottom:12px" class=warn>`+
+     `⚠ accepting will fail — <code>${esc(rdy.references_dir)}</code> is not mounted read-write.</div>`;
+ }
+ h+=`<p style="color:#888;margin:0 0 12px">${c.length} Parler-only voice(s) still need an F5 clip. `+
+    `Paste a YouTube URL, set start + duration, Execute, then preview and Accept to flip the voice to F5.`+
+    `${rdy.cookies?' <span class=ok>· cookies loaded</span>':''}</p>`;
+ if(!c.length)return h+'<p class=ok>● every voice already has a clip 🎉</p>';
+ h+='<table><tr><th style="width:16%">character</th><th>YouTube URL</th>'+
+    '<th style="width:70px">start</th><th style="width:70px">secs</th>'+
+    '<th style="width:330px">action</th></tr>';
+ for(const x of c){
+  const n=x.name, folder=x.reference_folder||x.name;
+  h+=`<tr id="cliprow-${n}" data-folder="${esc(folder)}">`+
+     `<td>${esc(n.replace(/_/g,' '))}</td>`+
+     `<td><input id="clipurl-${n}" placeholder="https://youtu.be/…" style="width:100%;box-sizing:border-box;background:#111;color:#eee;border:1px solid #444;border-radius:4px;padding:5px 7px;font:12px monospace"></td>`+
+     `<td><input id="clipstart-${n}" value="0:00" style="width:100%;box-sizing:border-box;background:#111;color:#eee;border:1px solid #444;border-radius:4px;padding:5px 5px;font:12px monospace"></td>`+
+     `<td><input id="clipdur-${n}" value="30" style="width:100%;box-sizing:border-box;background:#111;color:#eee;border:1px solid #444;border-radius:4px;padding:5px 5px;font:12px monospace"></td>`+
+     `<td id="clipact-${n}"><button class=refresh onclick="clipExec('${n}')">▶ Execute</button></td>`+
+     `</tr>`;
+ }
+ return h+'</table>';
+}
+function clipExec(n){
+ const cell=document.getElementById('clipact-'+n);
+ const url=document.getElementById('clipurl-'+n).value;
+ const start=document.getElementById('clipstart-'+n).value;
+ const dur=document.getElementById('clipdur-'+n).value;
+ if(!url.trim()){cell.innerHTML='<span class=warn>enter a URL first</span> '+cell.innerHTML;return;}
+ cell.innerHTML='⏳ downloading…';
+ fetch('/api/clip-capture',{method:'POST',headers:{'content-type':'application/json'},
+   body:JSON.stringify({character:n,url,start,duration:dur})})
+  .then(r=>r.json()).then(d=>{
+   if(!d.ok){cell.innerHTML=`<span class=bad>✗ ${esc(d.reason||'failed')}</span> `+
+     `<button class=refresh onclick="clipExec('${n}')">↻ retry</button>`;return;}
+   clipState[n]={staged_id:d.staged_id};
+   cell.innerHTML=`<audio id="clipaudio-${n}" src="/api/clip-preview?staged_id=${d.staged_id}" autoplay></audio>`+
+     `<button class=refresh onclick="clipPlay('${n}')">▶ Play</button> `+
+     `<button class=refresh style="background:#4caf50" onclick="clipAccept('${n}')">✓ Accept</button> `+
+     `<button class=refresh style="background:#888" onclick="clipReject('${n}')">✗ Reject</button> `+
+     `<span class=ok>${d.seconds}s · ${(d.size/1024|0)}KB</span>`;
+  }).catch(e=>{cell.innerHTML=`<span class=bad>✗ ${esc(e)}</span>`;});
+}
+function clipPlay(n){
+ const a=document.getElementById('clipaudio-'+n);
+ if(a){a.currentTime=0;a.play();}
+}
+function clipAccept(n){
+ const st=clipState[n];if(!st)return;
+ const cell=document.getElementById('clipact-'+n);
+ const folder=document.getElementById('cliprow-'+n).dataset.folder;
+ cell.innerHTML='⏳ saving…';
+ fetch('/api/clip-accept',{method:'POST',headers:{'content-type':'application/json'},
+   body:JSON.stringify({character:n,staged_id:st.staged_id,folder})})
+  .then(r=>r.json()).then(d=>{
+   if(!d.ok){cell.innerHTML=`<span class=bad>✗ ${esc(d.reason||'failed')}</span>`;return;}
+   delete clipState[n];
+   const flipped=d.scan&&d.scan.ok?' <span class=ok>→ now F5</span>':
+     ` <span class=warn>(saved; re-scan: ${esc((d.scan&&d.scan.reason)||'?')})</span>`;
+   cell.innerHTML=`<span class=ok>✓ accepted as <code>${esc(d.name)}</code></span>${flipped}`;
+  }).catch(e=>{cell.innerHTML=`<span class=bad>✗ ${esc(e)}</span>`;});
+}
+function clipReject(n){
+ const st=clipState[n];if(!st)return;
+ fetch('/api/clip-reject',{method:'POST',headers:{'content-type':'application/json'},
+   body:JSON.stringify({staged_id:st.staged_id})}).catch(()=>{});
+ delete clipState[n];
+ document.getElementById('clipact-'+n).innerHTML=`<button class=refresh onclick="clipExec('${n}')">▶ Execute</button>`;
+}
+
 // ---- Workflow I/O: a running log of per-run pipeline traces, tailed by polling -
 let wfTimer=null,wfMaxId=0,wfPaused=false;
 function wfMs(ms){if(ms==null)return '';return ms>=1000?(ms/1000).toFixed(1)+'s':ms+'ms';}
@@ -708,6 +1098,20 @@ function wfEntry(t){
   rows+=`<div class=wfrow><span class=k>🎭 voices</span><span class=v>${names}</span></div>`;
   const said=t.voices.filter(v=>v.text).map(v=>`<div><b>${esc((v.character||'').replace(/_/g,' '))}:</b> ${esc(v.text)}</div>`).join('');
   if(said)rows+=`<div class=wfrow><span class=k>💬 said</span><span class="v said">${said}</span></div>`;
+ }
+ if(t.steps&&t.steps.length){
+  const parts=t.steps.map(s=>`${esc(s.label)} ${wfMs(s.ms)}`).join(' · ');
+  rows+=`<div class=wfrow><span class=k>⏱ steps</span><span class=v style="color:#aaa">${parts}</span></div>`;
+ }
+ if(t.synth&&t.synth.segments&&t.synth.segments.length){
+  const segs=t.synth.segments.map((s,i)=>{
+   const g=s.generate_ms!=null?`gen ${wfMs(s.generate_ms)}`:'';
+   const f=s.filter_ms!=null?`+flt ${wfMs(s.filter_ms)}`:'';
+   return `seg${i+1} ${esc(s.engine||'?')} ${g}${f?' '+f:''}${s.ok===false?' ✕':''}`;
+  }).join(' · ');
+  const cc=t.synth.concat_ms!=null?` · concat ${wfMs(t.synth.concat_ms)}`:'';
+  const par=t.synth.parallel?' · ∥ parallel':'';
+  rows+=`<div class=wfrow><span class=k>↳ tts</span><span class=v style="color:#9a9">${segs}${cc}${par}</span></div>`;
  }
  if(t.error)rows+=`<div class=wfrow><span class=k>⚠ error</span><span class="v bad">${esc(t.error)}</span></div>`;
  const o=t.output||{};
@@ -770,6 +1174,7 @@ const TABS=[
  {id:'health', label:'Service health',  load:loadHealth},
  {id:'config', label:'Config',          load:loadConfig},
  {id:'voices', label:'Voices',          load:loadVoices},
+ {id:'clips',  label:'Clip Capture',   load:loadClips},
  {id:'wf',     label:'Workflow I/O',    load:loadWf},
 ];
 

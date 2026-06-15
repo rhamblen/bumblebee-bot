@@ -2,6 +2,7 @@ import asyncio
 import glob
 import json
 import os
+import time
 import uuid
 import logging
 
@@ -209,10 +210,14 @@ async def synthesize(req: SpeakRequest) -> dict:
         else:
             raise HTTPException(status_code=400, detail=f"Unknown tts_engine: {effective_engine}")
 
+        t_gen = time.perf_counter()
         raw_path = await _post_tts_with_retry(client, tts_url, payload, effective_engine)
+        generate_ms = int((time.perf_counter() - t_gen) * 1000)
 
     try:
+        t_flt = time.perf_counter()
         await apply_vintage_filter(raw_path, final_path)
+        filter_ms = int((time.perf_counter() - t_flt) * 1000)
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
@@ -220,7 +225,12 @@ async def synthesize(req: SpeakRequest) -> dict:
             os.remove(raw_path)
 
     filename = os.path.basename(final_path)
-    return {"url": f"{PUBLIC_BASE_URL}/{filename}", "path": final_path}
+    # `timing` lets the admin console's Workflow I/O log break the synthesis phase
+    # down per segment (generate vs vintage-filter) — generation dominates, so this
+    # is where the per-step latency actually lives.
+    return {"url": f"{PUBLIC_BASE_URL}/{filename}", "path": final_path,
+            "engine": effective_engine,
+            "timing": {"generate_ms": generate_ms, "filter_ms": filter_ms}}
 
 
 @app.post("/speak")
@@ -253,39 +263,60 @@ async def speak_multi(req: SpeakMultiRequest):
     if not req.segments:
         raise HTTPException(status_code=400, detail="at least one segment is required")
 
-    # JB2: synthesize each segment independently; a segment that still fails
-    # after its retry is dropped from the concat rather than aborting the whole
-    # response. Only error out if EVERY segment fails.
-    seg_results, skipped = [], 0
+    # Synthesize all segments CONCURRENTLY (asyncio.gather). Each segment is an
+    # independent TTS+filter pipeline, and generation dominates the wall time, so
+    # overlapping them is the big win for multi-voice runs vs the old serial loop.
+    # JB2: a segment that still fails after its retry is dropped from the concat
+    # rather than aborting; only error out if EVERY segment fails.
     total = len(req.segments)
-    for i, seg in enumerate(req.segments):
-        try:
-            seg_results.append(await synthesize(SpeakRequest(
-                text=seg.text,
-                tts_engine=seg.tts_engine,
-                reference_clip=seg.reference_clip,
-                voice_description=seg.voice_description,
-                exaggeration=seg.exaggeration,
-                output_dir=req.output_dir,
-            )))
-        except HTTPException as e:
+    t_synth = time.perf_counter()
+    results = await asyncio.gather(*(
+        synthesize(SpeakRequest(
+            text=seg.text,
+            tts_engine=seg.tts_engine,
+            reference_clip=seg.reference_clip,
+            voice_description=seg.voice_description,
+            exaggeration=seg.exaggeration,
+            output_dir=req.output_dir,
+        )) for seg in req.segments
+    ), return_exceptions=True)
+    synth_ms = int((time.perf_counter() - t_synth) * 1000)
+
+    seg_results, skipped, seg_timings = [], 0, []
+    for i, (seg, res) in enumerate(zip(req.segments, results)):
+        if isinstance(res, HTTPException):
             skipped += 1
-            log.warning(
-                "speak-multi: segment %d/%d failed, skipping (%s): %r",
-                i + 1, total, e.detail, seg.text[:60],
-            )
+            seg_timings.append({"engine": seg.tts_engine, "ok": False})
+            log.warning("speak-multi: segment %d/%d failed, skipping (%s): %r",
+                        i + 1, total, res.detail, seg.text[:60])
+        elif isinstance(res, BaseException):
+            raise res  # unexpected error — preserve the old fail-loud behaviour
+        else:
+            seg_results.append(res)
+            t = res.get("timing", {})
+            seg_timings.append({"engine": res.get("engine"), "ok": True,
+                                "generate_ms": t.get("generate_ms"),
+                                "filter_ms": t.get("filter_ms")})
 
     if not seg_results:
         raise HTTPException(status_code=502, detail="all segments failed to synthesize")
 
+    # Timings flow back to the admin console's Workflow I/O log via the n8n
+    # "Call Orchestrator" node output — `parallel` flags that segments overlapped,
+    # `synth_ms` is the wall time of the whole (concurrent) synthesis phase.
+    timings = {"segments": seg_timings, "synth_ms": synth_ms,
+               "concat_ms": None, "parallel": len(req.segments) > 1}
+
     if len(seg_results) == 1:
         r = seg_results[0]
-        return {"url": r["url"], "count": 1, "skipped": skipped}
+        return {"url": r["url"], "count": 1, "skipped": skipped, "timings": timings}
 
     paths = [r["path"] for r in seg_results]
     combined = os.path.join(req.output_dir, f"{uuid.uuid4()}.wav")
     try:
+        t_cat = time.perf_counter()
         await concat_wavs(paths, combined, req.gap_seconds)
+        timings["concat_ms"] = int((time.perf_counter() - t_cat) * 1000)
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
@@ -298,12 +329,26 @@ async def speak_multi(req: SpeakMultiRequest):
         "url": f"{PUBLIC_BASE_URL}/{os.path.basename(combined)}",
         "count": len(seg_results),
         "skipped": skipped,
+        "timings": timings,
     }
 
 
 def _load_descriptor() -> dict:
     with open(DESCRIPTOR_PATH, encoding="utf-8") as f:
         return json.load(f)
+
+
+def _save_descriptor(desc: dict) -> None:
+    """Atomically persist the voice table back to DESCRIPTOR_PATH."""
+    tmp = DESCRIPTOR_PATH + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(desc, f, indent=2, ensure_ascii=False)
+    os.replace(tmp, DESCRIPTOR_PATH)
+
+
+class VoiceDescriptionRequest(BaseModel):
+    name: str
+    voice_description: str
 
 
 @app.get("/voices")
@@ -384,10 +429,7 @@ async def scan_references():
     desc["parler_only"] = sum(1 for c in characters if not c.get("clip_on_disk"))
 
     # Atomic write back to the table.
-    tmp = DESCRIPTOR_PATH + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(desc, f, indent=2, ensure_ascii=False)
-    os.replace(tmp, DESCRIPTOR_PATH)
+    _save_descriptor(desc)
 
     # Build + speak the confirmation.
     if new_clips:
@@ -411,6 +453,32 @@ async def scan_references():
         "clips_on_disk": desc["clips_on_disk"],
         "url": spoken["url"],
     }
+
+
+@app.post("/admin/voice-description")
+async def set_voice_description(req: VoiceDescriptionRequest):
+    """Update a single character's Parler voice_description and persist the table.
+
+    Used by the admin console's Voices tab to tweak the style prompt for
+    Parler-only characters without re-running build_character_descriptor.py.
+    """
+    voice_description = req.voice_description.strip()
+    if not voice_description:
+        raise HTTPException(status_code=400, detail="voice_description must not be empty")
+
+    try:
+        desc = _load_descriptor()
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"descriptor not found at {DESCRIPTOR_PATH}")
+
+    char = next((c for c in desc.get("characters", []) if c.get("name") == req.name), None)
+    if char is None:
+        raise HTTPException(status_code=404, detail=f"character not found: {req.name}")
+
+    char["voice_description"] = voice_description
+    _save_descriptor(desc)
+    log.info("voice-description updated: %s", req.name)
+    return {"name": req.name, "voice_description": voice_description}
 
 
 @app.get("/health")

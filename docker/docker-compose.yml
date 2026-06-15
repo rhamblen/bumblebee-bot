@@ -134,6 +134,9 @@ services:
       - N8N_WORKFLOW_ID=${N8N_WORKFLOW_ID:-ykVWvfFBHQpaC2h3}
       - COMPOSE_PATH=/srv/docker-compose.yml
       - ENV_PATH=/srv/.env
+      # Clip Capture tab: where accepted YouTube snippets are written (same share
+      # the orchestrator reads, so a re-scan flips the voice to F5).
+      - REFERENCES_DIR=/media/references
     ports:
       - "5012:5012"
     volumes:
@@ -144,6 +147,10 @@ services:
       # read-only docker socket: lets the Config tab compare each container's
       # RUNNING env against .env/compose and flag "needs recreate" (drift check).
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      # media share (read-write) — the Clip Capture tab downloads YouTube snippets
+      # and writes accepted clips into /media/references/<character>/. Same mount
+      # the orchestrator uses, so /admin/scan-references sees the new file.
+      - /mnt/user/media/bumblebee:/media:rw
     depends_on:
       - orchestrator
 
