@@ -37,6 +37,7 @@ It holds no model weights of its own — it's pure routing, FFmpeg, and file ser
 | `POST` | `/speak-multi` | Render N segments concurrently, concat into one WAV (0.6s gaps) |
 | `GET` | `/voices` | Serve the live `character_descriptor.json` voice table |
 | `POST` | `/admin/scan-references` | Rescan `references/`, update each character's clip status, speak a confirmation |
+| `POST` | `/admin/voice-description` | Update one character's Parler `voice_description` (`{name, voice_description}`) and persist the table — used by the [Admin Console Voices tab](Admin-Console-Voices.md#editing-a-parler-description) |
 | `GET` | `/health` | Liveness (`{"status":"ok"}`) |
 | `GET` | `/files/<uuid>.wav` | Static serving of rendered audio (what Sonos fetches) |
 
