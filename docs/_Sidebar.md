@@ -5,13 +5,25 @@
 **Start here**
 - [Concept & Lore](Concept-and-Lore)
 - [Architecture & Workflow](Architecture-and-Workflow)
+  - [1. Mood Classification (C1)](Workflow-Mood-Classification)
+  - [2. Character Selection](Workflow-Character-Selection)
+  - [3. Composition (C2/C3)](Workflow-Composition)
+  - [4. Orchestration & Playback](Workflow-Orchestration-and-Playback)
 
 **Build & deploy**
 - [Docker Containers](Docker-Containers)
+  - [Service: Orchestrator](Service-Orchestrator)
+  - [Service: Xiaozhi Gateway](Service-Xiaozhi-Gateway)
+  - [Service: Whisper STT](Service-Whisper-STT)
+  - [Service: Audio Converter](Service-Audio-Converter)
 - [Unraid Template](Unraid-Template)
 
 **Operate**
 - [Admin Console](Admin-Console)
+  - [Service Health](Admin-Console-Service-Health)
+  - [Config](Admin-Console-Config)
+  - [Voices](Admin-Console-Voices)
+  - [Workflow I/O](Admin-Console-Workflow-IO)
 
 **Voice in / out**
 - [STT Options](STT-Options)

@@ -4,87 +4,22 @@ A small **operator web UI** for the Bumblebee stack — `docker/admin-console/` 
 
 > **Design principle: it never holds its own state.** The console reads the *same* sources the live containers read — the orchestrator's `GET /voices` table, the mounted `docker-compose.yml`, the mounted `.env` — and reports on them. There's no separate database to drift out of sync.
 >
-> **Writing config into running containers is deliberately out of scope.** The console *explains* what's wrong (e.g. a missing env var); you fix it the normal build way. This keeps the git-tracked compose/`.env` as the single source of truth and avoids config drift.
+> **Writing config into running containers is deliberately out of scope.** The console *explains* what's wrong (e.g. a missing env var) and can edit the git-tracked `.env`; you still rebuild to apply. This keeps the git-tracked compose/`.env` as the single source of truth and avoids config drift.
 
 ## The tabs
 
-The UI is a thin tabbed shell driven by a single declarative array, so tabs are trivial to reorder or extend. Each tab **lazy-loads** its data on first open and has its own **↻ refresh** button plus a "last updated" timestamp.
+The UI is a thin tabbed shell driven by a single declarative array, so tabs are trivial to reorder or extend. Each tab **lazy-loads** its data on first open and has its own **↻ refresh** button plus a "last updated" timestamp. Each tab has its own page:
 
-| Tab | What it shows |
-|---|---|
-| **Service health** | Live up/down/na for every container in the pipeline (see below) |
-| **Config** | Per-container env view — resolved value + source; edit `${VAR}`-backed values and save to `.env`. Includes the validator findings |
-| **Voices** | Live character table from the orchestrator `/voices` — F5-clip vs Parler split, response_type/register |
-| **Workflow I/O** | A **running log** of per-run pipeline traces — heard → mood → voices → said → output — tailed live from n8n |
-
-### Service health — probed in workflow order
-
-The health tab lists services **in the order a request flows through them** (admin-console first, then input → STT → brain → synthesis → engines), so a problem shows up at the stage it occurs:
-
-```
-admin-console → xiaozhi-gateway → whisper-stt → n8n → redis → ollama
-              → orchestrator → audio-converter → f5-tts → parler-tts → coqui-tts → chatterbox
-```
-
-Not every service answers a plain `GET /health`, so each is probed the right way:
-
-| Service | Probe | Healthy when |
+| Tab | What it shows | Page |
 |---|---|---|
-| orchestrator, f5/parler/coqui/chatterbox, audio-converter, whisper-stt | HTTP `GET /health` | `2xx` |
-| **xiaozhi-gateway** | HTTP `GET /xiaozhi/ota/` | `2xx` — the gateway has no `/health`, so its OTA endpoint stands in |
-| **admin-console** | HTTP `GET /health` (self) | `2xx` |
-| **ollama** | HTTP `GET /` | `2xx` ("Ollama is running") |
-| **redis** | TCP `PING` | reply contains `PONG` — a real protocol check, not just an open port |
-| **n8n** | HTTP `GET /healthz` | `2xx` — see the reachability note below |
-
-The table shows three states — `● up`, `● down`, `○ n/a` (not configured) — plus a **detail** column (HTTP code, `+PONG`, or the error) so a red row tells you *why*.
-
-### Config tab (validator + `.env` editor)
-
-The tab is **data-driven**: it walks every service's compose `environment:` block and, for each variable, shows the **resolved value** and where it comes from — `.env` (an override is set), `default` (a `${VAR:-default}` fallback in compose), or `compose` (a bare literal). Fields are grouped by container.
-
-**What's editable:** a variable can be edited *only when compose references it as `${VAR}` or `${VAR:-default}`* — i.e. it's sourced from `.env`. Editing it and pressing **💾 Save .env** writes the value to `.env` (`POST /api/env`). A bare literal (`FOO=http://x`) is shown **read-only**; to make it editable, convert it to `${FOO:-http://x}` in compose — done deliberately, one section at a time, so the change surface stays reviewable.
-
-**Secrets** (e.g. `N8N_API_KEY`, `OTA_WS_TOKEN`) are masked (`••••••••`) in the browser; a save that sends the mask back unchanged is skipped, so secrets are never round-tripped or clobbered by accident. The writer updates only the managed keys and **preserves every other line and comment** in `.env`.
-
-**Applying changes:** env vars are read at container start, so a save takes effect when you **recreate the affected container(s)** — this is still "generate config, you build", never a hot-push into a running container.
-
-The tab also shows the **validator findings**: `${VAR}` referenced in compose but absent from `.env` (a hard finding for a bare `${VAR}`, a soft warning for `${VAR:-default}`), and a missing `.env` entirely.
-
-**What each field means** — every variable, its format, valid values, and default is in the [Environment variable reference](Docker-Containers.md#environment-variable-reference).
-
-#### Drift check — "needs recreate"
-
-Because env vars are interpolated at container **create** time, editing `.env` (here or by hand) doesn't reach a *running* process until that container is recreated — a `restart` is not enough. The tab makes this visible: it compares each service's **expected** value (compose, with `${VAR}` resolved from `.env`) against the value the container is **actually running** (its Docker `Config.Env`), read over a **read-only `/var/run/docker.sock`** mount.
-
-When they differ you get a red banner listing the affected containers, plus an inline **⚠ running: … — recreate to apply** badge on each stale field. Secrets are masked. If the socket isn't mounted the check shows "drift check unavailable" and the rest of the tab is unaffected.
-
-> **Why a socket mount:** reading another container's running env needs the Docker API. The mount is **read-only**, but be aware docker-socket access is powerful (≈ root on the host) — a deliberate tradeoff for a homelab operator pane.
-
-### Workflow I/O — the live log
-
-A **running log** of what actually flowed through the pipeline, one entry per n8n run, in the same flow order as the health tab:
-
-```
-#61 · ✓ · 20:59:14 · 📟 QT · ⏱ 26.1s · LLM 2.8s
- 🎤 heard    "What? What was the first thing you said?"
- 🧠 mood     confused · console · light
- 🎭 voices   Wendy Craig [parler]
- 💬 said     Wendy Craig: "…"
- 🔊 out      f16bab30….wav · 1 seg · 0 skipped
-```
-
-**It's a tail, not a snapshot.** n8n is itself an append-only ledger (executions have monotonic ids) and the console holds no state — so the panel fetches the last N traces, then **polls every 8s** and prepends any new run (newest on top, with a `● live` indicator and a **⏸ pause** toggle). Scrollback is capped so it can run all day. Each field is pulled straight from the execution's `runData` by node name (`Webhook` → heard, `Parse Ollama Response` → mood, `Parse Segments` → voices + said, `Call Orchestrator` → output), via `GET /api/workflow-trace`.
-
-**Failure flagging:** a failed run is bordered red and its header reads `✕ failed at <stage>` — n8n's `lastNodeExecuted` mapped to the pipeline stage that broke, with the error message inline.
-
-**What it surfaces at a glance:** the `[f5]`/`[parler]` engine tag per voice (clip-coverage gaps), and the latency split — wall-clock vs LLM time — which makes it obvious when synthesis, not the brain, is the slow part.
-
-> The live C1 mood call currently emits three fields (`mood`, `response_type`, `response_register`); the log shows exactly those. Enriching C1 to the fuller mood schema is a separate workflow change.
+| **Service health** | Live up/down/na for every container, in workflow order | [Service Health](Admin-Console-Service-Health.md) |
+| **Config** | Per-container env view + validator + editable `.env` + drift check | [Config](Admin-Console-Config.md) |
+| **Voices** | Live character table — F5-clip vs Parler split, type/register, editable Parler descriptions | [Voices](Admin-Console-Voices.md) |
+| **Workflow I/O** | A running log of per-run pipeline traces, tailed live from n8n | [Workflow I/O](Admin-Console-Workflow-IO.md) |
 
 ## Reaching n8n (the macvlan caveat)
 
-n8n runs on Unraid's macvlan (`br0`), while the admin-console sits on the `bumblebee_default` bridge. Unraid **blocks macvlan↔bridge traffic on the same host**, so the n8n LAN IP (`192.168.1.47:5678`) is unreachable from the console — exactly the same constraint the [gateway hit](Docker-Containers.md#the-9-services).
+n8n runs on Unraid's macvlan (`br0`), while the admin-console sits on the `bumblebee_default` bridge. Unraid **blocks macvlan↔bridge traffic on the same host**, so the n8n LAN IP (`192.168.1.47:5678`) is unreachable from the console — exactly the same constraint the [gateway hit](Service-Xiaozhi-Gateway.md).
 
 The fix is the same trick the gateway uses for its webhook: point `N8N_API_URL` at the **public Cloudflare Tunnel base** (which dials outbound), not the LAN IP:
 
@@ -94,7 +29,7 @@ N8N_API_URL=https://<your-tunnel-domain>
 # N8N_API_KEY=<key>   # set to enable the Workflow I/O panel; /healthz needs no key
 ```
 
-The tunnel forwards `GET /healthz` (→ `200`, lights the health probe) and `GET /api/v1/executions` (→ `401` without a key, populates the Workflow I/O tab once `N8N_API_KEY` is set). With `N8N_API_URL` blank, the n8n health row simply shows `○ n/a` rather than a false `down`.
+The tunnel forwards `GET /healthz` (→ `200`, lights the health probe) and `GET /api/v1/executions` (→ `401` without a key, populates the [Workflow I/O tab](Admin-Console-Workflow-IO.md) once `N8N_API_KEY` is set). With `N8N_API_URL` blank, the n8n health row simply shows `○ n/a` rather than a false `down`.
 
 ## Configuration
 
@@ -122,8 +57,6 @@ The shell wires the button, panel, lazy-load, refresh, and timestamp automatical
 
 ## Roadmap
 
-Planned, not yet built:
-- **Client / wake-word panel** — read the per-device registry from the gateway.
-- **Config editing — more fields** — Phase 1 edits the `${VAR}`-backed values (the n8n keys). Next: convert the high-value compose literals (GPU pins, service URLs, VAD/silence tuning) to `${VAR:-default}` so they become editable too.
-- **Live config store** — move the *tunable* behavioural values (VAD/silence, TTS retries, whisper language) out of `.env` into a store services re-read on a `/reload`, so they apply without a container recreate. `.env` keeps only what genuinely needs a rebuild (connections, paths, ports, GPU).
-- **Brain config on the Voices tab** — voice-count, weighting, persona, and the Ollama model→role map are *brain* settings, not infra; they belong with Voices, not Config.
+Tab-specific plans live on each tab page ([Config](Admin-Console-Config.md#roadmap-for-this-tab), [Voices](Admin-Console-Voices.md#roadmap-for-this-tab)). Cross-cutting, not yet built:
+
+- **Client / wake-word panel** — a new tab reading the per-device registry from the [gateway](Service-Xiaozhi-Gateway.md).

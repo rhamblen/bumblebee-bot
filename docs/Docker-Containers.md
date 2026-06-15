@@ -6,17 +6,19 @@ The stack is **9 containers** built from `docker/docker-compose.yml`, plus share
 
 | Service | Container name | Port | GPU | Role |
 |---|---|---|---|---|
-| **orchestrator** | `bumblebee-orchestrator` | 5005 | — (CPU) | Routes to the right TTS, runs FFmpeg, stitches segments, serves WAVs at `/files/` |
-| **f5-tts** | `f5-tts` | 5003 | RTX 3060 | Voice **cloning** from a reference clip — best quality |
-| **parler-tts** | `parler-tts` | 5004 | RTX 3060 | **Described** voice synthesis — no reference clip needed |
-| **coqui-tts** (XTTS v2) | `coqui-tts` | 5002 | RTX 3090 | Voice cloning — alternative to F5 |
-| **chatterbox** | `chatterbox` | 5006 | RTX 3060 | Voice cloning with emotion/exaggeration control |
-| **audio-converter** | `audio-converter` | 5007 | — (CPU) | Converts MP3/MP4/OGG reference clips → WAV (with caching) |
-| **whisper-stt** | `whisper-stt` | 5009 | RTX 3090 | faster-whisper speech-to-text for ESP32 voice input |
-| **xiaozhi-gateway** | `xiaozhi-gateway` | 5010 (WS) + 5011 (OTA) | — (CPU) | ESP32 WebSocket server: Opus in/out, server-side VAD, calls Whisper + n8n; serves `/ota` device discovery on 5011 |
+| **orchestrator** | `bumblebee-orchestrator` | 5005 | — (CPU) | Routes to the right TTS, runs FFmpeg, stitches segments, serves WAVs at `/files/` — [details](Service-Orchestrator.md) |
+| **f5-tts** | `f5-tts` | 5003 | RTX 3060 | Voice **cloning** from a reference clip — best quality ([TTS Options](TTS-Options.md)) |
+| **parler-tts** | `parler-tts` | 5004 | RTX 3060 | **Described** voice synthesis — no reference clip needed ([TTS Options](TTS-Options.md)) |
+| **coqui-tts** (XTTS v2) | `coqui-tts` | 5002 | RTX 3090 | Voice cloning — alternative to F5 ([TTS Options](TTS-Options.md)) |
+| **chatterbox** | `chatterbox` | 5006 | RTX 3060 | Voice cloning with emotion/exaggeration control ([TTS Options](TTS-Options.md)) |
+| **audio-converter** | `audio-converter` | 5007 | — (CPU) | Converts MP3/MP4/OGG reference clips → WAV (with caching) — [details](Service-Audio-Converter.md) |
+| **whisper-stt** | `whisper-stt` | 5009 | RTX 3090 | faster-whisper speech-to-text for ESP32 voice input — [details](Service-Whisper-STT.md) |
+| **xiaozhi-gateway** | `xiaozhi-gateway` | 5010 (WS) + 5011 (OTA) | — (CPU) | ESP32 WebSocket server: Opus in/out, server-side VAD, calls Whisper + n8n; serves `/ota` device discovery on 5011 — [details](Service-Xiaozhi-Gateway.md) |
 | **admin-console** | `bumblebee-admin-console` | 5012 | — (CPU) | Operator web UI: stack health (workflow order), config validation, live voice table, n8n workflow I/O — see [Admin Console](Admin-Console.md) |
 
 **Shared services:** Ollama `:11434` and Redis `:6379` on `bumblebee_default`; **n8n `:5678` on macvlan `br0`** (LAN IP `192.168.1.47`).
+
+> **Per-service deep dives.** The four structurally distinct services each have their own page covering role, inputs, outputs, and API: [Orchestrator](Service-Orchestrator.md), [Xiaozhi Gateway](Service-Xiaozhi-Gateway.md), [Whisper STT](Service-Whisper-STT.md), [Audio Converter](Service-Audio-Converter.md). The four TTS engines share one comparison page — [TTS Options](TTS-Options.md) — since they differ only in cloning approach. The [Admin Console](Admin-Console.md) has its own section.
 
 > **n8n networking gotcha.** n8n is on Unraid's macvlan (`br0`), not `bumblebee_default`. A bridge container (like `xiaozhi-gateway`) **cannot reach n8n on the same host** — neither by hostname (different network) nor by LAN IP `192.168.1.47` (Unraid blocks macvlan↔bridge same-host traffic; you get `All connection attempts failed`). So the gateway's `N8N_WEBHOOK_URL` is set to the **public Cloudflare Tunnel webhook** `https://<your-tunnel-domain>/webhook/bumblebee`, which dials outbound and works regardless. Leave `N8N_WEBHOOK_URL` blank to run the gateway in orchestrator-direct **test mode** (Parler, no n8n).
 
@@ -105,7 +107,7 @@ These are read by the services with sensible defaults but aren't declared in `do
 
 ## The orchestrator API
 
-FastAPI. Key routes:
+FastAPI. Key routes (full write-up on the [Orchestrator](Service-Orchestrator.md) page):
 
 | Method | Route | Purpose |
 |---|---|---|

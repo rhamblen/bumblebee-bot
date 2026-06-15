@@ -11,16 +11,16 @@ This wiki is the full write-up of how the system is built: a local, GPU-accelera
 ## Start here
 
 - **[Concept & Lore](Concept-and-Lore)** — what Bumblebee is, the canon behind it, and the design rules that follow
-- **[Architecture & Workflow](Architecture-and-Workflow)** — the diagrams: system layout, request lifecycle, and multi-device topology
+- **[Architecture & Workflow](Architecture-and-Workflow)** — the diagrams: system layout, request lifecycle, and multi-device topology. The n8n workflow is broken out stage by stage: [mood](Workflow-Mood-Classification) → [casting](Workflow-Character-Selection) → [composition](Workflow-Composition) → [orchestration & playback](Workflow-Orchestration-and-Playback)
 
 ## Build & deploy
 
-- **[Docker Containers](Docker-Containers)** — the 9 services, the orchestrator API, building, publishing, and custom Unraid icons
+- **[Docker Containers](Docker-Containers)** — the 9 services, building, publishing, and custom Unraid icons. Per-service deep dives: [Orchestrator](Service-Orchestrator), [Gateway](Service-Xiaozhi-Gateway), [Whisper STT](Service-Whisper-STT), [Audio Converter](Service-Audio-Converter)
 - **[Unraid Template](Unraid-Template)** — install on Unraid, the shared Docker network, env vars, and volumes
 
 ## Operate
 
-- **[Admin Console](Admin-Console)** — the operator web UI: stack health (in workflow order), config validation, the live voice table, and n8n workflow I/O
+- **[Admin Console](Admin-Console)** — the operator web UI; one page per tab: [Service Health](Admin-Console-Service-Health), [Config](Admin-Console-Config), [Voices](Admin-Console-Voices), [Workflow I/O](Admin-Console-Workflow-IO)
 
 ## Voice in / out
 

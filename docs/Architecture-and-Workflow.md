@@ -2,6 +2,13 @@
 
 Three views: the **system architecture** (what runs where), the **request lifecycle** (what happens to one message), and the **multi-device topology** (how several ESP32 devices share the pipeline).
 
+This page is the overview. The n8n workflow itself is broken into four stage pages, each covering the nodes, inputs, and outputs of that step:
+
+1. [Mood Classification (C1)](Workflow-Mood-Classification.md) — phrase → structured mood reading
+2. [Character Selection](Workflow-Character-Selection.md) — mood → 1–3 cast voices
+3. [Composition (C2/C3)](Workflow-Composition.md) — cast → in-character lines → render-ready segments
+4. [Orchestration & Playback](Workflow-Orchestration-and-Playback.md) → audio URL → Sonos / ESP32
+
 ---
 
 ## 1. System architecture
@@ -129,6 +136,8 @@ See [Voice Input: Alexa → ESP32/Xiaozhi](Voice-Input-Alexa-vs-ESP32.md) for th
 ---
 
 ## n8n node order (current)
+
+The full node list in one place (each group is detailed on its stage page — see the four links at the top of this page):
 
 ```
 Webhook
