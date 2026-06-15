@@ -26,6 +26,21 @@ The orchestrator picks per segment: if a reference clip exists on disk for the c
 | Parler **mini** | Works well for described styles |
 | Parler **large** | ❌ Generates garbage noise — **do not use** |
 
+### Speed notes (measured 2026-06-15)
+
+Controlled head-to-head — the **same 35-word line** through each engine via the orchestrator's `/speak` (so output length doesn't skew it):
+
+| Engine (GPU) | Warm generate | Notes |
+|---|---|---|
+| **Parler mini** (RTX 3090, bf16) | ~14.7s | very consistent; autoregressive (time ∝ output length) |
+| **F5-TTS** (RTX 3060) | ~8s (Winston/Goofy), ~3s (John Wayne) | ~1.8× faster than Parler **despite the slower card** |
+
+Takeaways:
+- **F5 is faster than Parler** — it's non-autoregressive (flow-matching) vs Parler's token-by-token decode. So clips win on **both** quality and speed.
+- **F5 has a per-clip cold-start that scales with reference-clip length** (a long reference → ~27s on first use, then ~3s warm once its embedding is cached; short refs barely penalised). Warming clips at startup avoids the first-use tail.
+- **F5 and Parler sit on different GPUs** (3060 vs 3090), so a mixed multi-voice run synthesises across **both cards in true parallel** — clip characters don't just render faster, they offload the 3090. See [GPU split](Docker-Containers.md#gpu-split).
+- Parler generation is dominated by **output length**, not raw GPU power — the lever there is shorter lines / a token cap, not a faster card (moving it to the 3090 + bf16 gave only ~17%, though it halved its VRAM).
+
 ## Why have all four?
 
 - **Coverage.** Only a fraction of characters have a usable reference clip. Parler lets every archetype have a voice immediately; cloners make the ones with clips sound far more authentic.

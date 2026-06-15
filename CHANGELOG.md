@@ -10,6 +10,11 @@ dated, and pushed to GitHub along with any docs/Wiki updates — so the reposito
 always reflects the project's true current status and the choices made.
 
 ## [Unreleased]
+### Documentation
+- **TTS Options — speed notes** ([TTS-Options.md](docs/TTS-Options.md)): measured F5-vs-Parler
+  head-to-head (same text via `/speak`). F5 ~8s vs Parler ~14.7s (~1.8× faster) despite F5 being on
+  the slower 3060 — it's non-autoregressive. Notes the per-clip F5 cold-start and that F5 (3060) +
+  Parler (3090) give true cross-GPU parallelism on mixed multi-voice runs.
 
 ## [0.9.0] - 2026-06-15
 ### Added
