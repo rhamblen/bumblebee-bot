@@ -11,6 +11,28 @@ always reflects the project's true current status and the choices made.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-06-15
+### Added
+- **Admin console — Workflow I/O is now a live, appended pipeline-trace log.** The tab was
+  a bare id/started/status table; it now renders one entry per n8n run showing what actually
+  flowed through the pipeline, in flow order: 🎤 **heard** (transcript + device) → 🧠 **mood**
+  (`mood · response_type · response_register`) → 🎭 **voices** (each with an `[f5]`/`[parler]`
+  engine pill) → 💬 **said** (per-character text) → 🔊 **out** (WAV file · segment count ·
+  skipped). Every field is pulled straight from the execution's `runData` by node name — no
+  n8n workflow changes needed (`GET /api/workflow-trace`).
+- **Live tail + controls.** n8n is itself an append-only ledger, so the panel fetches the last
+  N traces then **polls every 8s**, prepending new runs (newest on top) with a `● live`
+  indicator, a **⏸ pause** toggle, and a **🗑 clear** button; scrollback is capped so it can
+  run all day. The console still holds no state — the log is just a rendered tail of n8n.
+- **Failure flagging + latency.** Failed runs are bordered red and headed `✕ failed at <stage>`
+  (n8n's `lastNodeExecuted` mapped to the pipeline stage, with the error message inline). Each
+  entry shows end-to-end wall time and the LLM portion (⏱ · LLM), making it obvious when
+  synthesis — not the brain — is the slow part. Engine pills surface F5 clip-coverage gaps at
+  a glance.
+### Changed
+- Admin-console n8n endpoint `GET /api/workflow-runs` replaced by `GET /api/workflow-trace`
+  (returns flattened per-stage traces instead of raw executions).
+
 ## [0.6.0] - 2026-06-14
 ### Added
 - **Admin console — Config tab drift check ("needs recreate")**. Env is interpolated at

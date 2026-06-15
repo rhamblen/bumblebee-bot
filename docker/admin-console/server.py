@@ -14,7 +14,9 @@ Panels:
                         bare literals are read-only. Plus the validator findings
                         (${VARS} referenced but undefined, missing .env).
   3. Voice/character  — live table from the orchestrator GET /voices (clip vs Parler).
-  4. Workflow I/O     — last N n8n executions (input -> output) via the n8n REST API.
+  4. Workflow I/O     — a running LOG of per-run pipeline traces (heard -> mood ->
+                        voices -> said -> output), flattened from n8n executions and
+                        tailed forward by the browser.
 
 Not built yet: client/wake-word panel, bumblebee-scoped container status, a live
 config store for the tunable values (apply without a recreate), and brain config
@@ -26,6 +28,7 @@ import re
 import json
 import asyncio
 import logging
+from datetime import datetime
 
 import httpx
 import yaml
@@ -386,8 +389,113 @@ async def drift_check() -> dict:
             "affected": sorted({f["container"] for f in findings})}
 
 
-async def workflow_runs(limit: int = 10) -> dict:
-    """Last N n8n executions with input/output, via the n8n REST API."""
+# ----------------------------------------------------------- workflow trace
+# The Workflow I/O tab is a running LOG of pipeline traces. n8n is itself an
+# append-only ledger (executions have monotonic ids) and the console holds no
+# state — so the "log" is just a rendered tail of /executions, polled forward by
+# the browser. Each entry pulls per-stage I/O straight out of the execution's
+# runData, keyed by node name (see Architecture-and-Workflow.md for node order).
+
+# Node name -> human stage label, in flow order. Drives failure flagging: when a
+# run errors we map n8n's lastNodeExecuted to the stage that broke.
+TRACE_STAGES = {
+    "Webhook": "input",
+    "Read Session": "session-read",
+    "Build Ollama Request": "mood-prompt",
+    "Ask Ollama": "mood",
+    "Parse Ollama Response": "voice-select",
+    "Ask Ollama Compose": "compose",
+    "Parse Segments": "segments",
+    "Write Session": "session-write",
+    "Call Orchestrator": "synthesis",
+    "Respond": "respond",
+    "Play on Sonos": "playback",
+}
+
+# QT — the user's primary ESP32 device, recognised by its MAC so the log labels it
+# rather than showing a bare address. Other devices show their raw session_id.
+KNOWN_DEVICES = {"d8:3b:da:9d:18:64": "QT"}
+
+
+def _node_json(run: dict, node: str):
+    """First output item's json for a node in runData, or None if absent/empty."""
+    try:
+        return run[node][0]["data"]["main"][0][0]["json"]
+    except Exception:  # noqa: BLE001 - tolerate any shape we didn't expect
+        return None
+
+
+def _node_ms(run: dict, node: str):
+    """A node's execution time in ms, or None."""
+    try:
+        return run[node][0].get("executionTime")
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _iso_ms(a: str, b: str):
+    """Wall-clock ms between two ISO timestamps, or None."""
+    try:
+        ta = datetime.fromisoformat(a.replace("Z", "+00:00"))
+        tb = datetime.fromisoformat(b.replace("Z", "+00:00"))
+        return int((tb - ta).total_seconds() * 1000)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _trace_one(e: dict) -> dict:
+    """Flatten one n8n execution into a per-stage trace entry for the log."""
+    rd = (e.get("data") or {}).get("resultData") or {}
+    run = rd.get("runData") or {}
+    status = e.get("status") or ("success" if e.get("finished") else "running")
+
+    wh = _node_json(run, "Webhook") or {}
+    body = wh.get("body", {}) if isinstance(wh, dict) else {}
+    sid = body.get("session_id")
+    por = _node_json(run, "Parse Ollama Response") or {}
+    ps = _node_json(run, "Parse Segments") or {}
+    orch = _node_json(run, "Call Orchestrator") or {}
+
+    # Voices + what they said: segments carry character/text/engine together. If the
+    # run failed before Parse Segments, fall back to the picked[] selection (no text).
+    voices = []
+    segs = ps.get("segments") if isinstance(ps, dict) else None
+    if segs:
+        for s in segs:
+            voices.append({"character": s.get("character"),
+                           "engine": s.get("tts_engine"), "text": s.get("text")})
+    elif por.get("picked"):
+        for p in por["picked"]:
+            voices.append({"character": p.get("name"),
+                           "engine": "f5" if p.get("clip_on_disk") else "parler",
+                           "text": None})
+
+    # Failure flagging: which stage broke (only meaningful when not a success).
+    failed_node = rd.get("lastNodeExecuted") if status not in ("success", "running") else None
+    err = rd.get("error") or {}
+    err_msg = err.get("message") if isinstance(err, dict) else str(err)
+
+    return {
+        "id": e.get("id"),
+        "status": status,
+        "started": e.get("startedAt"),
+        "wall_ms": _iso_ms(e.get("startedAt", ""), e.get("stoppedAt", "")),
+        "llm_ms": (_node_ms(run, "Ask Ollama") or 0) + (_node_ms(run, "Ask Ollama Compose") or 0),
+        "device": KNOWN_DEVICES.get(sid, sid),
+        "device_raw": sid,
+        "heard": body.get("text"),
+        "mood": por.get("mood"),
+        "response_type": por.get("response_type"),
+        "response_register": por.get("response_register"),
+        "voices": voices,
+        "output": {"url": orch.get("url"), "count": orch.get("count"), "skipped": orch.get("skipped")},
+        "failed_stage": TRACE_STAGES.get(failed_node, failed_node),
+        "error": err_msg if failed_node else None,
+    }
+
+
+async def workflow_trace(limit: int = 30) -> dict:
+    """Last N executions flattened to per-stage traces (newest first), for the log."""
     if not (N8N_API_URL and N8N_API_KEY):
         return {"ok": False, "reason": "N8N_API_URL / N8N_API_KEY not configured"}
     headers = {"X-N8N-API-KEY": N8N_API_KEY, "accept": "application/json"}
@@ -395,11 +503,11 @@ async def workflow_runs(limit: int = 10) -> dict:
     if N8N_WORKFLOW_ID:
         params["workflowId"] = N8N_WORKFLOW_ID
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=15.0) as client:
             r = await client.get(f"{N8N_API_URL.rstrip('/')}/api/v1/executions",
                                   headers=headers, params=params)
             r.raise_for_status()
-            return {"ok": True, "data": r.json().get("data", [])}
+            return {"ok": True, "runs": [_trace_one(e) for e in r.json().get("data", [])]}
     except Exception as e:  # noqa: BLE001
         return {"ok": False, "reason": f"{e} (macvlan? see N8N_API_URL note in server.py)"}
 
@@ -437,9 +545,9 @@ async def api_drift():
     return await drift_check()
 
 
-@app.get("/api/workflow-runs")
-async def api_workflow_runs(limit: int = 10):
-    return await workflow_runs(limit)
+@app.get("/api/workflow-trace")
+async def api_workflow_trace(limit: int = 30):
+    return await workflow_trace(limit)
 
 
 @app.get("/health")
@@ -473,6 +581,22 @@ PAGE = """<!doctype html><html><head><meta charset="utf-8">
  .clip{background:#1b3a1b;color:#9f9}.parler{background:#3a2f1b;color:#fc9}
  pre{white-space:pre-wrap;word-break:break-word;margin:0;font-size:12px}
  button.refresh{background:#ffcc00;border:0;border-radius:6px;padding:6px 12px;cursor:pointer;font-weight:600}
+ /* Workflow I/O log */
+ .wftools{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:12px;color:#888}
+ .livedot{width:8px;height:8px;border-radius:50%;background:#4caf50;display:inline-block;animation:pulse 1.6s infinite}
+ .livedot.paused{background:#888;animation:none}
+ @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+ .wfentry{border:1px solid #333;border-left:3px solid #4caf50;border-radius:6px;padding:8px 12px;margin-bottom:8px;background:#202020}
+ .wfentry.fail{border-left-color:#f44336}
+ .wfentry.new{animation:flash 1.4s ease-out}
+ @keyframes flash{from{background:#2c3a2c}to{background:#202020}}
+ .wfhead{display:flex;gap:10px;align-items:center;font-size:12px;color:#999;margin-bottom:6px;flex-wrap:wrap}
+ .wfhead .id{color:#ffcc00;font-weight:600}
+ .wfhead .lat{margin-left:auto;color:#888;font-family:monospace}
+ .wfrow{display:flex;gap:8px;font-size:13px;padding:2px 0}
+ .wfrow .k{flex:0 0 80px;color:#888}
+ .wfrow .v{flex:1;min-width:0;word-break:break-word}
+ .said b{color:#ffcc00;font-weight:600}.said div{padding:1px 0}
 </style></head><body>
 <header><h1>🐝 Bumblebee Admin Console <small style="color:#aa9">P1</small></h1></header>
 <nav id=tabs></nav>
@@ -565,11 +689,80 @@ async function loadVoices(){
    `<td><span class="pill ${x.clip_on_disk?'clip':'parler'}">${x.clip_on_disk?'F5 clip':'Parler'}</span></td>`+
    `<td>${(x.response_type||[]).join(', ')}</td><td>${(x.response_register||[]).join(', ')}</td></tr>`).join('')+'</table>';
 }
+// ---- Workflow I/O: a running log of per-run pipeline traces, tailed by polling -
+let wfTimer=null,wfMaxId=0,wfPaused=false;
+function wfMs(ms){if(ms==null)return '';return ms>=1000?(ms/1000).toFixed(1)+'s':ms+'ms';}
+function wfEng(e){return `<span class="pill ${e==='f5'?'clip':'parler'}">${esc(e||'?')}</span>`;}
+function wfEntry(t){
+ const fail=t.failed_stage&&t.status!=='success';
+ const time=t.started?new Date(t.started).toLocaleTimeString():'';
+ const dev=t.device?`<span title="${esc(t.device_raw||'')}">📟 ${esc(t.device)}</span>`:'';
+ const lat=t.wall_ms!=null?`⏱ ${wfMs(t.wall_ms)}`+(t.llm_ms?` · LLM ${wfMs(t.llm_ms)}`:''):'';
+ const status=fail?`<span class=bad>✕ failed at ${esc(t.failed_stage)}</span>`
+   :t.status==='running'?`<span class=warn>● running</span>`:`<span class=ok>✓</span>`;
+ let rows=`<div class=wfrow><span class=k>🎤 heard</span><span class=v>${t.heard?esc(t.heard):'<i style=color:#666>—</i>'}</span></div>`;
+ if(t.mood)rows+=`<div class=wfrow><span class=k>🧠 mood</span><span class=v>${esc(t.mood)}`+
+   `${t.response_type?' · '+esc(t.response_type):''}${t.response_register?' · '+esc(t.response_register):''}</span></div>`;
+ if(t.voices&&t.voices.length){
+  const names=t.voices.map(v=>`${esc((v.character||'?').replace(/_/g,' '))} ${wfEng(v.engine)}`).join(' · ');
+  rows+=`<div class=wfrow><span class=k>🎭 voices</span><span class=v>${names}</span></div>`;
+  const said=t.voices.filter(v=>v.text).map(v=>`<div><b>${esc((v.character||'').replace(/_/g,' '))}:</b> ${esc(v.text)}</div>`).join('');
+  if(said)rows+=`<div class=wfrow><span class=k>💬 said</span><span class="v said">${said}</span></div>`;
+ }
+ if(t.error)rows+=`<div class=wfrow><span class=k>⚠ error</span><span class="v bad">${esc(t.error)}</span></div>`;
+ const o=t.output||{};
+ if(o.url){const f=o.url.split('/').pop();
+  rows+=`<div class=wfrow><span class=k>🔊 out</span><span class=v>${esc(f)} · ${o.count||0} seg${o.count===1?'':'s'}`+
+   `${o.skipped?' · '+o.skipped+' skipped':''}</span></div>`;}
+ return `<div class="wfentry${fail?' fail':''}" data-id="${t.id}">`+
+   `<div class=wfhead><span class=id>#${t.id}</span> ${status} <span>${time}</span> ${dev} <span class=lat>${lat}</span></div>`+
+   `${rows}</div>`;
+}
 async function loadWf(){
- const d=await j('/api/workflow-runs');
- if(!d.ok)return `<p class=warn>${d.reason}</p>`;
- const rows=(d.data||[]).map(e=>`<tr><td>${e.id}</td><td>${e.startedAt||''}</td><td class="${e.finished?'ok':'warn'}">${e.status||(e.finished?'ok':'running')}</td></tr>`).join('');
- return rows?'<table><tr><th>id</th><th>started</th><th>status</th></tr>'+rows+'</table>':'<p>no runs</p>';
+ if(wfTimer){clearInterval(wfTimer);wfTimer=null;}
+ const d=await j('/api/workflow-trace');
+ if(!d.ok)return `<p class=warn>${esc(d.reason)}</p>`;
+ const runs=d.runs||[];
+ wfMaxId=runs.reduce((m,r)=>Math.max(m,+r.id||0),0);
+ const body=runs.length?runs.map(wfEntry).join(''):'<p>no runs yet</p>';
+ wfTimer=setInterval(wfPoll,8000);
+ return `<div class=wftools><span class="livedot" id=wfdot></span><span id=wflive>live · polling every 8s</span>`+
+   `<button class=refresh style="padding:3px 10px" onclick="wfToggle(this)">⏸ pause</button>`+
+   `<button class=refresh style="padding:3px 10px;background:#444;color:#eee" onclick="wfClear()">🗑 clear</button></div>`+
+   `<div id=wflog>${body}</div>`;
+}
+function wfToggle(btn){
+ wfPaused=!wfPaused;
+ const dot=document.getElementById('wfdot'),live=document.getElementById('wflive');
+ if(dot)dot.classList.toggle('paused',wfPaused);
+ if(live)live.textContent=wfPaused?'paused':'live · polling every 8s';
+ btn.textContent=wfPaused?'▶ resume':'⏸ pause';
+}
+function wfClear(){
+ // Empties the on-screen log only. wfMaxId is kept, so polling resumes with the
+ // NEXT run — cleared entries don't reappear. ↻ refresh reloads the full tail.
+ const log=document.getElementById('wflog');
+ if(log)log.innerHTML='<p style="color:#666">cleared — new runs will appear here (↻ refresh to reload history)</p>';
+}
+async function wfPoll(){
+ if(wfPaused)return;
+ const log=document.getElementById('wflog');
+ if(!log){clearInterval(wfTimer);wfTimer=null;return;}  // tab DOM gone
+ try{
+  const d=await j('/api/workflow-trace');
+  if(!d.ok)return;
+  const fresh=(d.runs||[]).filter(r=>(+r.id||0)>wfMaxId).sort((a,b)=>(+a.id)-(+b.id));
+  if(fresh.length){const ph=log.querySelector('p');if(ph)ph.remove();}  // drop "no runs yet"
+  for(const t of fresh){
+   wfMaxId=Math.max(wfMaxId,+t.id||0);
+   const tmp=document.createElement('div');tmp.innerHTML=wfEntry(t);
+   const el=tmp.firstChild;el.classList.add('new');
+   log.insertBefore(el,log.firstChild);
+  }
+  while(log.children.length>80)log.removeChild(log.lastChild);  // cap scrollback
+  const stamp=document.getElementById('updated-wf');
+  if(stamp)stamp.textContent='updated '+new Date().toLocaleTimeString();
+ }catch(e){/* transient poll error — keep tailing */}
 }
 
 // ---- tab registry: reorder these lines to reorder the tabs -------------------

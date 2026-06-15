@@ -15,7 +15,7 @@ The UI is a thin tabbed shell driven by a single declarative array, so tabs are 
 | **Service health** | Live up/down/na for every container in the pipeline (see below) |
 | **Config** | Per-container env view — resolved value + source; edit `${VAR}`-backed values and save to `.env`. Includes the validator findings |
 | **Voices** | Live character table from the orchestrator `/voices` — F5-clip vs Parler split, response_type/register |
-| **Workflow I/O** | Last *N* n8n executions via the REST API |
+| **Workflow I/O** | A **running log** of per-run pipeline traces — heard → mood → voices → said → output — tailed live from n8n |
 
 ### Service health — probed in workflow order
 
@@ -61,6 +61,27 @@ When they differ you get a red banner listing the affected containers, plus an i
 
 > **Why a socket mount:** reading another container's running env needs the Docker API. The mount is **read-only**, but be aware docker-socket access is powerful (≈ root on the host) — a deliberate tradeoff for a homelab operator pane.
 
+### Workflow I/O — the live log
+
+A **running log** of what actually flowed through the pipeline, one entry per n8n run, in the same flow order as the health tab:
+
+```
+#61 · ✓ · 20:59:14 · 📟 QT · ⏱ 26.1s · LLM 2.8s
+ 🎤 heard    "What? What was the first thing you said?"
+ 🧠 mood     confused · console · light
+ 🎭 voices   Wendy Craig [parler]
+ 💬 said     Wendy Craig: "…"
+ 🔊 out      f16bab30….wav · 1 seg · 0 skipped
+```
+
+**It's a tail, not a snapshot.** n8n is itself an append-only ledger (executions have monotonic ids) and the console holds no state — so the panel fetches the last N traces, then **polls every 8s** and prepends any new run (newest on top, with a `● live` indicator and a **⏸ pause** toggle). Scrollback is capped so it can run all day. Each field is pulled straight from the execution's `runData` by node name (`Webhook` → heard, `Parse Ollama Response` → mood, `Parse Segments` → voices + said, `Call Orchestrator` → output), via `GET /api/workflow-trace`.
+
+**Failure flagging:** a failed run is bordered red and its header reads `✕ failed at <stage>` — n8n's `lastNodeExecuted` mapped to the pipeline stage that broke, with the error message inline.
+
+**What it surfaces at a glance:** the `[f5]`/`[parler]` engine tag per voice (clip-coverage gaps), and the latency split — wall-clock vs LLM time — which makes it obvious when synthesis, not the brain, is the slow part.
+
+> The live C1 mood call currently emits three fields (`mood`, `response_type`, `response_register`); the log shows exactly those. Enriching C1 to the fuller mood schema is a separate workflow change.
+
 ## Reaching n8n (the macvlan caveat)
 
 n8n runs on Unraid's macvlan (`br0`), while the admin-console sits on the `bumblebee_default` bridge. Unraid **blocks macvlan↔bridge traffic on the same host**, so the n8n LAN IP (`192.168.1.47:5678`) is unreachable from the console — exactly the same constraint the [gateway hit](Docker-Containers.md#the-9-services).
@@ -103,7 +124,6 @@ The shell wires the button, panel, lazy-load, refresh, and timestamp automatical
 
 Planned, not yet built:
 - **Client / wake-word panel** — read the per-device registry from the gateway.
-- **Workflow I/O by pipeline stage** — lay out a run's input→output in the same workflow order as the health tab, flagging the first stage that errored, so you can see *where* it broke.
 - **Config editing — more fields** — Phase 1 edits the `${VAR}`-backed values (the n8n keys). Next: convert the high-value compose literals (GPU pins, service URLs, VAD/silence tuning) to `${VAR:-default}` so they become editable too.
 - **Live config store** — move the *tunable* behavioural values (VAD/silence, TTS retries, whisper language) out of `.env` into a store services re-read on a `/reload`, so they apply without a container recreate. `.env` keeps only what genuinely needs a rebuild (connections, paths, ports, GPU).
 - **Brain config on the Voices tab** — voice-count, weighting, persona, and the Ollama model→role map are *brain* settings, not infra; they belong with Voices, not Config.
