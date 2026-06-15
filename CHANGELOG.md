@@ -11,6 +11,26 @@ always reflects the project's true current status and the choices made.
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-06-15
+### Added
+- **Admin Console — Voices tab: editable Parler descriptions + per-voice audition.** The character
+  table (`docker/admin-console/`) gained three operator features:
+  - **Editable `voice_description`** — Parler-only rows now show their style prompt in an extra column,
+    **locked read-only by default** (no open text field that a stray click could change). A per-row
+    **✏ Edit** unlocks just that cell (textarea + ✓ Save / ✗ Cancel). Saving posts to a new orchestrator
+    `POST /admin/voice-description {name, voice_description}` that updates `character_descriptor.json`
+    atomically (shared `_save_descriptor()` helper, also refactored into `/admin/scan-references`).
+  - **▶ Play preview (last column)** — generates a fresh random in-character line via Ollama
+    (`OLLAMA_MODEL`, default `mistral:latest`), synthesizes it with the character's engine (F5+clip or
+    Parler+description), and plays it inline. The orchestrator's new `SpeakRequest.keep_raw` returns the
+    pre-filter WAV alongside the filtered one, so you can A/B **▶ Filtered** vs **▶ Raw** from a single
+    render; **↻ New line** rolls another. Audio streams **same-origin** through the console
+    (`GET /api/voice-preview-audio`, reading the shared `/media/generated` mount) — mirroring Clip
+    Capture, since the browser can't reach the orchestrator's `:5005` directly.
+  - **🔥 Warm up F5** — fires one throwaway F5 render to pay F5's one-time ~20–25s ASR-init up front
+    (F5 keeps no per-voice cache; this is once per container, not per voice).
+  - Roster now **sorted by model then name** (F5-clip voices first, then Parler-only, each A–Z), re-applied on refresh.
+
 ## [0.9.1] - 2026-06-15
 ### Documentation
 - **Install Guide for Claude Code** ([Install-Guide-for-Claude-Code.md](docs/Install-Guide-for-Claude-Code.md)):

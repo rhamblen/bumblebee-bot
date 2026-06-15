@@ -95,6 +95,7 @@ class SpeakRequest(BaseModel):
     voice_description: str | None = None
     exaggeration: float = 0.4       # chatterbox only: 0.0 calm → 1.0 highly expressive
     output_dir: str = MEDIA_DIR
+    keep_raw: bool = False          # keep the pre-filter WAV and return its url_raw too
 
 
 async def resolve_reference_clip(clip_path: str, client: httpx.AsyncClient) -> str:
@@ -221,16 +222,21 @@ async def synthesize(req: SpeakRequest) -> dict:
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        if os.path.exists(raw_path) and raw_path != final_path:
+        # Normally the pre-filter WAV is throwaway; keep_raw retains it so a caller
+        # (e.g. the admin console's voice preview) can A/B the raw vs vintage sound.
+        if os.path.exists(raw_path) and raw_path != final_path and not req.keep_raw:
             os.remove(raw_path)
 
     filename = os.path.basename(final_path)
     # `timing` lets the admin console's Workflow I/O log break the synthesis phase
     # down per segment (generate vs vintage-filter) — generation dominates, so this
     # is where the per-step latency actually lives.
-    return {"url": f"{PUBLIC_BASE_URL}/{filename}", "path": final_path,
-            "engine": effective_engine,
-            "timing": {"generate_ms": generate_ms, "filter_ms": filter_ms}}
+    out = {"url": f"{PUBLIC_BASE_URL}/{filename}", "path": final_path,
+           "engine": effective_engine,
+           "timing": {"generate_ms": generate_ms, "filter_ms": filter_ms}}
+    if req.keep_raw and os.path.exists(raw_path) and raw_path != final_path:
+        out["url_raw"] = f"{PUBLIC_BASE_URL}/{os.path.basename(raw_path)}"
+    return out
 
 
 @app.post("/speak")

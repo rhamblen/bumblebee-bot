@@ -14,7 +14,7 @@ The UI is a thin tabbed shell driven by a single declarative array, so tabs are 
 |---|---|---|
 | **Service health** | Live up/down/na for every container, in workflow order | [Service Health](Admin-Console-Service-Health.md) |
 | **Config** | Per-container env view + validator + editable `.env` + drift check | [Config](Admin-Console-Config.md) |
-| **Voices** | Live character table — F5-clip vs Parler split, type/register, editable Parler descriptions | [Voices](Admin-Console-Voices.md) |
+| **Voices** | Live character table (sorted by model then name) — F5-clip vs Parler split, type/register, editable Parler descriptions, per-voice ▶ Play preview + 🔥 F5 warm-up | [Voices](Admin-Console-Voices.md) |
 | **Clip Capture** | Source F5 reference clips from YouTube — per Parler-only voice: download a snippet, preview, accept → flips the voice to F5 | [Clip Capture](Admin-Console-Clip-Capture.md) |
 | **Workflow I/O** | A running log of per-run pipeline traces, tailed live from n8n | [Workflow I/O](Admin-Console-Workflow-IO.md) |
 

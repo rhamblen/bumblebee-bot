@@ -29,6 +29,8 @@ config store for the tunable values (apply without a recreate), and brain config
 import os
 import re
 import json
+import time
+import random
 import asyncio
 import logging
 from datetime import datetime
@@ -44,6 +46,9 @@ log = logging.getLogger(__name__)
 app = FastAPI(title="Bumblebee Admin Console")
 
 ORCHESTRATOR_URL = os.environ.get("ORCHESTRATOR_URL", "http://bumblebee-orchestrator:5005")
+GATEWAY_URL = os.environ.get("GATEWAY_URL", "http://xiaozhi-gateway:5011")  # device registry source
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://ollama:11434")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "mistral:latest")  # C3 personality model for preview lines
 
 # Health panel — listed in WORKFLOW ORDER (admin-console first, then a request as
 # it flows: input edge → STT → brain → synthesis → engines). Each entry declares
@@ -93,6 +98,10 @@ N8N_WORKFLOW_ID = os.environ.get("N8N_WORKFLOW_ID", "ykVWvfFBHQpaC2h3")
 # capture lands in STAGING_DIR for preview; on accept it's moved into the matching
 # references/<folder>/ and the orchestrator re-scans to flip that voice to F5.
 REFERENCES_DIR = os.environ.get("REFERENCES_DIR", "/media/references")
+# Where the orchestrator writes rendered WAVs (same shared /media mount). The voice
+# preview serves these back SAME-ORIGIN through the console (like clip-preview) so the
+# browser never has to reach the orchestrator's :5005 directly.
+GENERATED_DIR = os.environ.get("GENERATED_DIR", "/media/generated")
 STAGING_DIR = os.environ.get("CLIP_STAGING_DIR", "/tmp/clip-staging")
 COOKIES_FILE = os.environ.get("YTDLP_COOKIES", "/cookies/cookies.txt")
 CLIP_SAMPLE_RATE = 22050  # mono s16 — the F5 reference-clip format
@@ -153,6 +162,27 @@ async def voices() -> dict:
         r = await client.get(f"{ORCHESTRATOR_URL}/voices")
         r.raise_for_status()
         return r.json()
+
+
+async def clients() -> dict:
+    """Device registry from the gateway (the only thing that sees the ESP32 connections).
+    Soft-fails to an empty list with a reason so the tab renders even if the gateway is down."""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.get(f"{GATEWAY_URL.rstrip('/')}/clients")
+            r.raise_for_status()
+            return r.json()
+    except Exception as e:  # noqa: BLE001
+        return {"devices": [], "online": 0, "error": str(e)}
+
+
+async def rename_client(mac: str, name: str) -> dict:
+    """Proxy a friendly-name change to the gateway, which owns the registry."""
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        r = await client.post(f"{GATEWAY_URL.rstrip('/')}/clients/{mac}/name", json={"name": name})
+        if r.status_code >= 400:
+            return {"ok": False, "reason": r.json().get("error", r.text)}
+        return {"ok": True, **r.json()}
 
 
 _VAR_RE = re.compile(r"\$\{([A-Z0-9_]+)(?::-[^}]*)?\}")
@@ -558,6 +588,8 @@ import uuid
 
 _SAFE_NAME_RE = re.compile(r"^[A-Za-z0-9_]+$")
 _HEX_RE = re.compile(r"^[0-9a-f]{32}$")
+# A rendered WAV basename: <uuid4>.wav or <uuid4>_raw.wav (no path traversal).
+_GEN_FILE_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(_raw)?\.wav$")
 
 
 def _safe_folder(name: str) -> str:
@@ -721,6 +753,108 @@ def clip_reject(staged_id: str) -> dict:
     return {"ok": True}
 
 
+# ----------------------------------------------------------- voice preview / warmup
+# Hear any character on demand: generate a fresh random in-character line (Ollama,
+# the C3 personality model), synthesize it via the orchestrator, and return BOTH the
+# vintage-filtered and the raw URLs so the operator can A/B them. F5-warmup fires one
+# throwaway F5 render to pay F5's one-time ASR init so the first real Play is fast.
+
+_PREVIEW_TOPICS = [
+    "the weather today", "how your day is going", "a word of encouragement",
+    "what's for dinner", "a fond memory", "the morning news", "a passing thought",
+    "the view outside", "an old friend", "your plans for the weekend",
+]
+
+
+async def _ollama_line(name: str, voice_description: str, register: str) -> str:
+    """Ask Ollama for ONE short in-character spoken line (for the voice preview)."""
+    persona = name.replace("_", " ")
+    topic = random.choice(_PREVIEW_TOPICS)
+    system = (f"You are {persona}. Reply with ONE short spoken line (max 15 words) in your "
+              f"distinctive voice and manner." + (f" Tone: {register}." if register else "") +
+              " No quotation marks, no stage directions, no preamble — just the spoken line.")
+    if voice_description:
+        system += f" Voice: {voice_description}"
+    body = {
+        "model": OLLAMA_MODEL,
+        "messages": [{"role": "system", "content": system},
+                     {"role": "user", "content": f"Say something about {topic}."}],
+        "stream": False,
+        "options": {"temperature": 0.9, "seed": random.randint(1, 2_000_000_000)},
+    }
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        r = await client.post(f"{OLLAMA_URL}/api/chat", json=body)
+        r.raise_for_status()
+        content = ((r.json().get("message") or {}).get("content") or "").strip().strip('"').strip()
+    return content or f"Hello, this is {persona}."
+
+
+async def voice_preview(name: str) -> dict:
+    """Generate a random in-character line and synthesize it (filtered + raw URLs)."""
+    try:
+        name = _safe_folder(name)
+    except ValueError as e:
+        return {"ok": False, "reason": str(e)}
+    try:
+        desc = await voices()
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "reason": f"could not load voices: {e}"}
+    char = next((c for c in desc.get("characters", []) if c.get("name") == name), None)
+    if char is None:
+        return {"ok": False, "reason": f"unknown character: {name}"}
+
+    try:
+        text = await _ollama_line(name, char.get("voice_description", ""),
+                                  ", ".join(char.get("response_register", []) or []))
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "reason": f"comment generation failed (ollama): {e}"}
+
+    on_disk = bool(char.get("clip_on_disk"))
+    payload = {
+        "text": text,
+        "tts_engine": "f5" if on_disk else "parler",
+        "reference_clip": char.get("reference_clip") if on_disk else None,
+        "voice_description": char.get("voice_description"),
+        "keep_raw": True,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=300.0) as client:
+            r = await client.post(f"{ORCHESTRATOR_URL}/speak", json=payload)
+            if r.status_code >= 400:
+                detail = (r.json().get("detail", r.text)
+                          if r.headers.get("content-type", "").startswith("application/json") else r.text)
+                return {"ok": False, "reason": f"synthesis failed: {detail}", "text": text}
+            d = r.json()
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "reason": f"orchestrator unreachable: {e}", "text": text}
+    # Return basenames; the browser plays them SAME-ORIGIN via /api/voice-preview-audio
+    # (the orchestrator's :5005 isn't reliably reachable from the browser).
+    return {"ok": True, "text": text, "engine": d.get("engine"),
+            "file": (d.get("url") or "").rsplit("/", 1)[-1] or None,
+            "file_raw": (d.get("url_raw") or "").rsplit("/", 1)[-1] or None}
+
+
+async def f5_warmup() -> dict:
+    """Render one throwaway line on an F5 voice to pay F5's one-time ASR init."""
+    try:
+        desc = await voices()
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "reason": f"could not load voices: {e}"}
+    f5 = next((c for c in desc.get("characters", []) if c.get("clip_on_disk")), None)
+    if f5 is None:
+        return {"ok": False, "reason": "no F5 voice (clip on disk) to warm up"}
+    t0 = time.perf_counter()
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            r = await client.post(f"{ORCHESTRATOR_URL}/speak",
+                                  json={"text": "Warming up.", "tts_engine": "f5",
+                                        "reference_clip": f5.get("reference_clip")})
+            r.raise_for_status()
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "reason": f"warmup render failed: {e}"}
+    return {"ok": True, "voice": f5.get("name"), "ms": int((time.perf_counter() - t0) * 1000)}
+
+
 # --------------------------------------------------------------------------- API
 
 @app.get("/api/health")
@@ -731,6 +865,39 @@ async def api_health():
 @app.get("/api/voices")
 async def api_voices():
     return await voices()
+
+
+@app.get("/api/clients")
+async def api_clients():
+    return await clients()
+
+
+@app.post("/api/clients/rename")
+async def api_clients_rename(req: Request):
+    b = await req.json()
+    return await rename_client(b.get("mac", ""), b.get("name", ""))
+
+
+@app.post("/api/voice-preview")
+async def api_voice_preview(req: Request):
+    b = await req.json()
+    return await voice_preview(b.get("name", ""))
+
+
+@app.get("/api/voice-preview-audio")
+async def api_voice_preview_audio(file: str):
+    """Stream a rendered preview WAV back SAME-ORIGIN (mirrors /api/clip-preview)."""
+    if not _GEN_FILE_RE.match(file or ""):
+        return JSONResponse({"error": "bad file"}, status_code=400)
+    path = os.path.join(GENERATED_DIR, file)
+    if not os.path.exists(path):
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return FileResponse(path, media_type="audio/wav")
+
+
+@app.post("/api/f5-warmup")
+async def api_f5_warmup():
+    return await f5_warmup()
 
 
 @app.post("/api/voice-description")
@@ -873,6 +1040,65 @@ async function loadHealth(){
   d.map(s=>{const [c,t]=s.ok==null?['warn','○ n/a']:(s.ok?['ok','● up']:['bad','● down']);
    return `<tr><td>${s.name}</td><td class="${c}">${t}</td><td>${s.detail||''}</td><td>${s.url||''}</td></tr>`;}).join('')+'</table>';
 }
+// ---- Devices: the ESP32 clients the gateway has seen. Online state is live; name + last
+// heard/said are persisted in Redis by the gateway, so they survive a restart.
+function ago(ts){
+ if(!ts)return '—';
+ const s=Math.max(0,Math.floor(Date.now()/1000-ts));
+ if(s<60)return s+'s ago';
+ if(s<3600)return Math.floor(s/60)+'m ago';
+ if(s<86400)return Math.floor(s/3600)+'h ago';
+ return Math.floor(s/86400)+'d ago';
+}
+function dnLocked(mac,name){
+ const t=name?`<b>${esc(name)}</b>`:'<i style="color:#888">— unnamed —</i>';
+ return `${t} <button class="refresh vdbtn" onclick="dnEdit('${esc(mac)}')">✏</button>`;
+}
+function dnEdit(mac){
+ const td=document.getElementById('dn-'+mac);
+ td.innerHTML='<input class=dnedit style="width:110px;background:#111;color:#eee;border:1px solid #444;border-radius:4px;padding:4px 6px">'+
+   ` <button class="refresh vdbtn" style="background:#4caf50" onclick="dnSave('${esc(mac)}')">✓</button>`+
+   ` <button class="refresh vdbtn" style="background:#888" onclick="dnCancel('${esc(mac)}')">✗</button>`;
+ const inp=td.querySelector('.dnedit');inp.value=td.dataset.name||'';inp.focus();
+ inp.onkeydown=e=>{if(e.key==='Enter')dnSave(mac);if(e.key==='Escape')dnCancel(mac);};
+}
+function dnCancel(mac){const td=document.getElementById('dn-'+mac);td.innerHTML=dnLocked(mac,td.dataset.name||'');}
+function dnSave(mac){
+ const td=document.getElementById('dn-'+mac);
+ const val=td.querySelector('.dnedit').value.trim();
+ td.innerHTML='⏳';
+ fetch('/api/clients/rename',{method:'POST',headers:{'content-type':'application/json'},
+   body:JSON.stringify({mac,name:val})})
+  .then(r=>r.json()).then(d=>{
+   if(!d.ok){td.innerHTML=dnLocked(mac,td.dataset.name||'')+` <span class=bad>✗ ${esc(d.reason||'failed')}</span>`;return;}
+   td.dataset.name=d.name;td.innerHTML=dnLocked(mac,d.name)+' <span class=ok>✓</span>';
+  }).catch(e=>{td.innerHTML=dnLocked(mac,td.dataset.name||'')+` <span class=bad>✗ ${esc(e)}</span>`;});
+}
+async function loadDevices(){
+ const d=await j('/api/clients');
+ const devs=d.devices||[];
+ let h='';
+ if(d.error)h+=`<p class=warn>⚠ gateway unreachable: ${esc(d.error)} — list may be stale.</p>`;
+ h+=`<p><span class=ok>${d.online||0} online</span> · ${devs.length} known device(s). `+
+    `Names are cosmetic — the MAC stays each device's conversation key.</p>`;
+ if(!devs.length)return h+'<p style="color:#888">No devices yet — power on an ESP32; it appears here on its first OTA/connect.</p>';
+ h+='<table><tr><th style="min-width:150px">name</th><th>status</th><th>MAC</th><th>last seen</th>'+
+    '<th>IP</th><th style="width:26%">last heard</th><th style="width:26%">last said</th></tr>';
+ for(const x of devs){
+  const mac=x.mac;
+  const st=x.online?'<span class=ok>● online</span>':'<span style="color:#888">○ offline</span>';
+  h+=`<tr>`+
+     `<td id="dn-${esc(mac)}" data-name="${esc(x.name||'')}">${dnLocked(mac,x.name||'')}</td>`+
+     `<td style="white-space:nowrap">${st}</td>`+
+     `<td style="font:12px monospace;color:#aac">${esc(mac)}</td>`+
+     `<td style="white-space:nowrap">${ago(x.last_seen)}</td>`+
+     `<td style="font:12px monospace;color:#9a9">${esc(x.last_ip||'—')}</td>`+
+     `<td style="color:#9cf">${x.last_heard?'“'+esc(x.last_heard)+'”':'—'}</td>`+
+     `<td style="color:#fc9">${x.last_said?'“'+esc(x.last_said)+'”':'—'}</td>`+
+     `</tr>`;
+ }
+ return h+'</table>';
+}
 const MASK='••••••••';  // keep in sync with MASK in server.py
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
 async function loadConfig(){
@@ -943,11 +1169,18 @@ async function saveEnv(){
  }catch(e){msg.innerHTML=`<span class=bad>error: ${esc(e)}</span>`;}
 }
 async function loadVoices(){
- const d=await j('/api/voices');const c=d.characters||[];
+ const d=await j('/api/voices');const c=(d.characters||[]).slice();
  const clip=c.filter(x=>x.clip_on_disk).length;
- return `<p>${d.total} voices · <span class=ok>${clip} with clip (F5)</span> · ${c.length-clip} Parler-only</p>`+
-  '<table><tr><th>name</th><th>engine</th><th>response_type</th><th>register</th>'+
-  '<th style="width:38%">parler description</th></tr>'+
+ // Sort by model (F5 clips first, then Parler), then alphabetically by name.
+ c.sort((a,b)=>{
+  const ka=a.clip_on_disk?0:1, kb=b.clip_on_disk?0:1;
+  if(ka!==kb)return ka-kb;
+  return a.name.localeCompare(b.name);
+ });
+ return `<p>${d.total} voices · <span class=ok>${clip} with clip (F5)</span> · ${c.length-clip} Parler-only `+
+  `<button class="refresh vdbtn" style="margin-left:8px" onclick="f5Warmup(this)">🔥 Warm up F5</button></p>`+
+  '<table><tr><th>name</th><th style="min-width:90px">engine</th><th>response_type</th><th>register</th>'+
+  '<th style="width:30%">parler description</th><th style="min-width:320px">play</th></tr>'+
   c.map(x=>{
    const n=x.name;
    // Parler description shown (and editable) ONLY when there's no F5 clip; F5 rows don't use it.
@@ -955,10 +1188,40 @@ async function loadVoices(){
      ? '<span style="color:#666">—</span>'
      : `<div id="vd-${n}" data-desc="${esc(x.voice_description||'')}">${vdLockedHTML(n,x.voice_description||'')}</div>`;
    return `<tr><td>${n.replace(/_/g,' ')}</td>`+
-    `<td><span class="pill ${x.clip_on_disk?'clip':'parler'}">${x.clip_on_disk?'F5 clip':'Parler'}</span></td>`+
+    `<td style="white-space:nowrap"><span class="pill ${x.clip_on_disk?'clip':'parler'}">${x.clip_on_disk?'F5 clip':'Parler'}</span></td>`+
     `<td>${(x.response_type||[]).join(', ')}</td><td>${(x.response_register||[]).join(', ')}</td>`+
-    `<td>${vd}</td></tr>`;
+    `<td>${vd}</td>`+
+    `<td id="pv-${n}"><button class="refresh vdbtn" onclick="vpPlay('${n}')">▶ Play</button></td></tr>`;
   }).join('')+'</table>';
+}
+// Voice preview: generate a fresh random in-character line, synthesize it, and offer
+// BOTH the vintage-filtered and the raw audio to play. First Play after an F5 restart
+// pays the one-time ~20-25s init — use 🔥 Warm up F5 to get that out of the way.
+function vpPlay(n){
+ const cell=document.getElementById('pv-'+n);
+ cell.innerHTML='⏳ generating…';
+ fetch('/api/voice-preview',{method:'POST',headers:{'content-type':'application/json'},
+   body:JSON.stringify({name:n})})
+  .then(r=>r.json()).then(d=>{
+   if(!d.ok){cell.innerHTML=`<span class=bad>✗ ${esc(d.reason||'failed')}</span> `+
+     `<button class="refresh vdbtn" onclick="vpPlay('${n}')">↻ retry</button>`;return;}
+   const aud=f=>`/api/voice-preview-audio?file=${encodeURIComponent(f)}`;
+   const raw=d.file_raw?`<audio id="pvraw-${n}" src="${aud(d.file_raw)}"></audio>`+
+     ` <button class="refresh vdbtn" onclick="document.getElementById('pvraw-${n}').play()">▶ Raw</button>`:'';
+   cell.innerHTML=`<audio id="pvflt-${n}" src="${aud(d.file)}" autoplay></audio>`+
+     `<span class="pill ${d.engine==='f5'?'clip':'parler'}">${esc(d.engine||'?')}</span> `+
+     `<button class="refresh vdbtn" onclick="document.getElementById('pvflt-${n}').play()">▶ Filtered</button>`+raw+
+     ` <button class="refresh vdbtn" style="background:#888" onclick="vpPlay('${n}')">↻ New line</button>`+
+     `<div style="color:#fc9;font-size:12px;margin-top:4px">“${esc(d.text||'')}”</div>`;
+  }).catch(e=>{cell.innerHTML=`<span class=bad>✗ ${esc(e)}</span>`;});
+}
+function f5Warmup(btn){
+ const orig=btn.innerHTML;btn.disabled=true;btn.innerHTML='🔥 warming…';
+ fetch('/api/f5-warmup',{method:'POST'}).then(r=>r.json()).then(d=>{
+  btn.disabled=false;
+  btn.innerHTML=d.ok?`🔥 warmed (${(d.ms/1000).toFixed(1)}s)`:`✗ ${esc(d.reason||'failed')}`;
+  setTimeout(()=>{btn.innerHTML=orig;},6000);
+ }).catch(e=>{btn.disabled=false;btn.innerHTML=`✗ ${esc(e)}`;});
 }
 // Parler description: locked read-only by default; ✏ Edit unlocks JUST that cell so it
 // can't be changed by an accidental click. The live value lives in the cell's data-desc
@@ -1171,11 +1434,12 @@ async function wfPoll(){
 
 // ---- tab registry: reorder these lines to reorder the tabs -------------------
 const TABS=[
- {id:'health', label:'Service health',  load:loadHealth},
- {id:'config', label:'Config',          load:loadConfig},
- {id:'voices', label:'Voices',          load:loadVoices},
- {id:'clips',  label:'Clip Capture',   load:loadClips},
- {id:'wf',     label:'Workflow I/O',    load:loadWf},
+ {id:'health',  label:'Service health',  load:loadHealth},
+ {id:'devices', label:'Devices',         load:loadDevices},
+ {id:'config',  label:'Config',          load:loadConfig},
+ {id:'voices',  label:'Voices',          load:loadVoices},
+ {id:'clips',   label:'Clip Capture',    load:loadClips},
+ {id:'wf',      label:'Workflow I/O',    load:loadWf},
 ];
 
 const loaded=new Set();

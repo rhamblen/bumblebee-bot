@@ -33,7 +33,7 @@ It holds no model weights of its own — it's pure routing, FFmpeg, and file ser
 
 | Method | Route | Purpose |
 |---|---|---|
-| `POST` | `/speak` | Render one segment → filtered WAV, return URL + timing |
+| `POST` | `/speak` | Render one segment → filtered WAV, return URL + timing (`keep_raw:true` also keeps the pre-filter WAV and returns `url_raw`) |
 | `POST` | `/speak-multi` | Render N segments concurrently, concat into one WAV (0.6s gaps) |
 | `GET` | `/voices` | Serve the live `character_descriptor.json` voice table |
 | `POST` | `/admin/scan-references` | Rescan `references/`, update each character's clip status, speak a confirmation |
