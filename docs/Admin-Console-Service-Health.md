@@ -1,6 +1,6 @@
 # Admin Console · Service Health tab
 
-> One of the four tabs of the [Admin Console](Admin-Console.md). Live up/down state for every container in the pipeline.
+> One of the five tabs of the [Admin Console](Admin-Console.md). Live up/down state for every container in the pipeline.
 
 ## What it shows
 

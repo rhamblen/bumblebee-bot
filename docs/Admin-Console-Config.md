@@ -1,6 +1,6 @@
 # Admin Console · Config tab
 
-> One of the four tabs of the [Admin Console](Admin-Console.md). A per-container env view, validator, and editable `.env` surface.
+> One of the five tabs of the [Admin Console](Admin-Console.md). A per-container env view, validator, and editable `.env` surface.
 
 ## What it shows
 

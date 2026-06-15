@@ -11,6 +11,41 @@ always reflects the project's true current status and the choices made.
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-06-15
+### Added
+- **Admin Console — Clip Capture tab** (`docker/admin-console/`). Sources F5 reference clips from
+  YouTube without leaving the browser, directly attacking the clip bottleneck (only 2/36 voices had
+  clips on disk). It's an accept/reject vetting station, not a fire-and-forget downloader:
+  - **Table = the Parler-only voices** (rows from `GET /voices` where `clip_on_disk:false` — exactly
+    the voices that still need a clip). Per row: YouTube URL, start (mm:ss), and a duration that
+    **defaults to 30s**.
+  - **▶ Execute** downloads just that section (yt-dlp `--download-sections`) and normalises to the F5
+    reference format (22050 Hz mono s16) into a **staging area** — nothing touches the library yet.
+  - A native **`<audio controls>` player** lets you preview/replay the candidate before deciding.
+  - **✓ Accept** moves the clip into `references/<character>/<character>_clip_NN.wav` (next free
+    number) and calls the orchestrator's [`/admin/scan-references`](docs/Service-Orchestrator.md) —
+    so the voice **flips Parler→F5 on the spot**. **✗ Reject** discards the staging file and leaves
+    the row editable to tweak + re-run. The table only reloads on the manual **↻ refresh**.
+  - New endpoints: `GET /api/clip-ready`, `POST /api/clip-capture`, `GET /api/clip-preview`,
+    `POST /api/clip-accept`, `POST /api/clip-reject`. Path inputs are guarded (folder `^[A-Za-z0-9_]+$`,
+    staged-id 32-hex) so nothing can escape the references/staging dirs.
+- **admin-console image gained a download toolchain** — `ffmpeg` + `yt-dlp[default]` + a **deno** JS
+  runtime, and the **media share is now mounted read-write** (`/mnt/user/media/bumblebee:/media`) so
+  accepted clips land where the orchestrator reads them. `REFERENCES_DIR` env added to the service.
+
+### Notes / gotchas (so we don't repeat the build saga)
+- **Modern yt-dlp needs deno _and_ the EJS challenge solver.** A JS runtime alone isn't enough —
+  YouTube's "n challenge" needs the `yt-dlp-ejs` solver scripts, which is why the image installs
+  **`yt-dlp[default]`** (bundles them) rather than plain `yt-dlp`. Symptom of missing it:
+  `n challenge solving failed … This video is not available`.
+- **No VPN.** The earlier `vpn-converter` container (in-container OpenVPN) is **retired** — it never
+  worked reliably. UR1 shares the home public IP, so a server-side yt-dlp on UR1 needs no tunnel.
+- **A Dockerfile change requires a real image rebuild** (`docker compose build`, not the Unraid
+  Docker-tab "force update", which only re-pulls a tag). Manage admin-console through **one** tool
+  (the Unraid Compose Manager plugin) — driving it from the CLI under a different compose project
+  name lands it on an isolated network (`bumblebee-docker_default`) where it can't reach the
+  orchestrator, and clashes on the fixed `container_name`.
+
 ## [0.8.1] - 2026-06-15
 ### Changed
 - **Parler TTS — performance pass** (synthesis was ~90% of every run, all of it Parler generation):

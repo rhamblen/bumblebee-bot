@@ -1,6 +1,6 @@
 # Admin Console · Workflow I/O tab
 
-> One of the four tabs of the [Admin Console](Admin-Console.md). A live, append-only log of what actually flowed through the pipeline.
+> One of the five tabs of the [Admin Console](Admin-Console.md). A live, append-only log of what actually flowed through the pipeline.
 
 ## What it shows
 

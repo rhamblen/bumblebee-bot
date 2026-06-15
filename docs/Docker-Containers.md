@@ -14,7 +14,7 @@ The stack is **9 containers** built from `docker/docker-compose.yml`, plus share
 | **audio-converter** | `audio-converter` | 5007 | — (CPU) | Converts MP3/MP4/OGG reference clips → WAV (with caching) — [details](Service-Audio-Converter.md) |
 | **whisper-stt** | `whisper-stt` | 5009 | RTX 3090 | faster-whisper speech-to-text for ESP32 voice input — [details](Service-Whisper-STT.md) |
 | **xiaozhi-gateway** | `xiaozhi-gateway` | 5010 (WS) + 5011 (OTA) | — (CPU) | ESP32 WebSocket server: Opus in/out, server-side VAD, calls Whisper + n8n; serves `/ota` device discovery on 5011 — [details](Service-Xiaozhi-Gateway.md) |
-| **admin-console** | `bumblebee-admin-console` | 5012 | — (CPU) | Operator web UI: stack health (workflow order), config validation, live voice table, n8n workflow I/O — see [Admin Console](Admin-Console.md) |
+| **admin-console** | `bumblebee-admin-console` | 5012 | — (CPU) | Operator web UI: stack health (workflow order), config validation, live voice table, YouTube clip capture, n8n workflow I/O — see [Admin Console](Admin-Console.md) |
 
 **Shared services:** Ollama `:11434` and Redis `:6379` on `bumblebee_default`; **n8n `:5678` on macvlan `br0`** (LAN IP `192.168.1.47`).
 
@@ -71,6 +71,8 @@ These are the variables declared in each service's compose `environment:` block 
 | `N8N_API_KEY` | n8n REST API key (n8n → Settings → API). Enables the Workflow I/O panel. | string (secret) | *(blank)* | **yes** |
 | `N8N_WORKFLOW_ID` | Scopes the executions shown to one workflow. Found in the n8n editor URL. | id string | `ykVWvfFBHQpaC2h3` | **yes** |
 | `COMPOSE_PATH` / `ENV_PATH` | Internal — where the console reads compose / writes `.env`. Don't change. | path | `/srv/docker-compose.yml`, `/srv/.env` | literal |
+| `REFERENCES_DIR` | Where the [Clip Capture tab](Admin-Console-Clip-Capture.md) writes accepted clips. Same `/media` share (mounted **rw**) the orchestrator reads. | path | `/media/references` | literal |
+| `CLIP_STAGING_DIR` | Scratch dir for not-yet-accepted captures. | path | `/tmp/clip-staging` | literal |
 
 ### orchestrator
 

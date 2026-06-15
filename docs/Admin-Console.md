@@ -15,6 +15,7 @@ The UI is a thin tabbed shell driven by a single declarative array, so tabs are 
 | **Service health** | Live up/down/na for every container, in workflow order | [Service Health](Admin-Console-Service-Health.md) |
 | **Config** | Per-container env view + validator + editable `.env` + drift check | [Config](Admin-Console-Config.md) |
 | **Voices** | Live character table — F5-clip vs Parler split, type/register, editable Parler descriptions | [Voices](Admin-Console-Voices.md) |
+| **Clip Capture** | Source F5 reference clips from YouTube — per Parler-only voice: download a snippet, preview, accept → flips the voice to F5 | [Clip Capture](Admin-Console-Clip-Capture.md) |
 | **Workflow I/O** | A running log of per-run pipeline traces, tailed live from n8n | [Workflow I/O](Admin-Console-Workflow-IO.md) |
 
 ## Reaching n8n (the macvlan caveat)
@@ -33,7 +34,7 @@ The tunnel forwards `GET /healthz` (→ `200`, lights the health probe) and `GET
 
 ## Configuration
 
-The console's **own** settings on the `admin-console` service in `docker-compose.yml` (all have sane `bumblebee_default` defaults). The vars it shares with the rest of the stack (`ORCHESTRATOR_URL`, the `N8N_*` set, `COMPOSE_PATH`/`ENV_PATH`) are in the canonical [Environment variable reference](Docker-Containers.md#environment-variable-reference); the ones below are **specific to the console's probes** and aren't declared in compose (code defaults — override on the service if needed):
+The console's **own** settings on the `admin-console` service in `docker-compose.yml` (all have sane `bumblebee_default` defaults). The [Clip Capture tab](Admin-Console-Clip-Capture.md) adds a download toolchain to the image (`ffmpeg`, `yt-dlp[default]`, **deno**) and mounts the media share **read-write** (`/mnt/user/media/bumblebee:/media`, with `REFERENCES_DIR=/media/references`) so accepted clips land where the orchestrator reads them. The vars it shares with the rest of the stack (`ORCHESTRATOR_URL`, the `N8N_*` set, `COMPOSE_PATH`/`ENV_PATH`) are in the canonical [Environment variable reference](Docker-Containers.md#environment-variable-reference); the ones below are **specific to the console's probes** and aren't declared in compose (code defaults — override on the service if needed):
 
 | Env var | Default | Purpose |
 |---|---|---|

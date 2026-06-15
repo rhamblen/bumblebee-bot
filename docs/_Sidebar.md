@@ -23,6 +23,7 @@
   - [Service Health](Admin-Console-Service-Health)
   - [Config](Admin-Console-Config)
   - [Voices](Admin-Console-Voices)
+  - [Clip Capture](Admin-Console-Clip-Capture)
   - [Workflow I/O](Admin-Console-Workflow-IO)
 
 **Voice in / out**

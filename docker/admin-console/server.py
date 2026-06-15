@@ -1017,9 +1017,9 @@ async function loadClips(){
     `Paste a YouTube URL, set start + duration, Execute, then preview and Accept to flip the voice to F5.`+
     `${rdy.cookies?' <span class=ok>· cookies loaded</span>':''}</p>`;
  if(!c.length)return h+'<p class=ok>● every voice already has a clip 🎉</p>';
- h+='<table><tr><th style="width:16%">character</th><th>YouTube URL</th>'+
-    '<th style="width:70px">start</th><th style="width:70px">secs</th>'+
-    '<th style="width:330px">action</th></tr>';
+ h+='<table><tr><th style="width:15%">character</th><th>YouTube URL</th>'+
+    '<th style="width:64px">start</th><th style="width:56px">secs</th>'+
+    '<th style="width:34%">action</th></tr>';
  for(const x of c){
   const n=x.name, folder=x.reference_folder||x.name;
   h+=`<tr id="cliprow-${n}" data-folder="${esc(folder)}">`+
@@ -1027,7 +1027,8 @@ async function loadClips(){
      `<td><input id="clipurl-${n}" placeholder="https://youtu.be/…" style="width:100%;box-sizing:border-box;background:#111;color:#eee;border:1px solid #444;border-radius:4px;padding:5px 7px;font:12px monospace"></td>`+
      `<td><input id="clipstart-${n}" value="0:00" style="width:100%;box-sizing:border-box;background:#111;color:#eee;border:1px solid #444;border-radius:4px;padding:5px 5px;font:12px monospace"></td>`+
      `<td><input id="clipdur-${n}" value="30" style="width:100%;box-sizing:border-box;background:#111;color:#eee;border:1px solid #444;border-radius:4px;padding:5px 5px;font:12px monospace"></td>`+
-     `<td id="clipact-${n}"><button class=refresh onclick="clipExec('${n}')">▶ Execute</button></td>`+
+     `<td id="clipact-${n}" style="white-space:nowrap">`+
+       `<button class=refresh onclick="clipExec('${n}')">▶ Execute</button></td>`+
      `</tr>`;
  }
  return h+'</table>';
@@ -1045,16 +1046,15 @@ function clipExec(n){
    if(!d.ok){cell.innerHTML=`<span class=bad>✗ ${esc(d.reason||'failed')}</span> `+
      `<button class=refresh onclick="clipExec('${n}')">↻ retry</button>`;return;}
    clipState[n]={staged_id:d.staged_id};
-   cell.innerHTML=`<audio id="clipaudio-${n}" src="/api/clip-preview?staged_id=${d.staged_id}" autoplay></audio>`+
-     `<button class=refresh onclick="clipPlay('${n}')">▶ Play</button> `+
+   // Native <audio controls> — a guaranteed, visible play/scrub control (a custom
+   // .play() button is fragile: autoplay policy + invisible element). Cache-bust
+   // the src so re-Execute on the same row always loads the fresh capture.
+   cell.innerHTML=`<audio controls preload="auto" src="/api/clip-preview?staged_id=${d.staged_id}&t=${Date.now()}" `+
+     `style="height:30px;vertical-align:middle;width:190px"></audio> `+
      `<button class=refresh style="background:#4caf50" onclick="clipAccept('${n}')">✓ Accept</button> `+
      `<button class=refresh style="background:#888" onclick="clipReject('${n}')">✗ Reject</button> `+
      `<span class=ok>${d.seconds}s · ${(d.size/1024|0)}KB</span>`;
   }).catch(e=>{cell.innerHTML=`<span class=bad>✗ ${esc(e)}</span>`;});
-}
-function clipPlay(n){
- const a=document.getElementById('clipaudio-'+n);
- if(a){a.currentTime=0;a.play();}
 }
 function clipAccept(n){
  const st=clipState[n];if(!st)return;

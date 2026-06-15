@@ -1,6 +1,6 @@
 # Admin Console · Voices tab
 
-> One of the four tabs of the [Admin Console](Admin-Console.md). The live character roster.
+> One of the five tabs of the [Admin Console](Admin-Console.md). The live character roster.
 
 ## What it shows
 
