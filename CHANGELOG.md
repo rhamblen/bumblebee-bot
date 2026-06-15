@@ -10,7 +10,21 @@ dated, and pushed to GitHub along with any docs/Wiki updates — so the reposito
 always reflects the project's true current status and the choices made.
 
 ## [Unreleased]
+
+## [0.9.1] - 2026-06-15
 ### Documentation
+- **Install Guide for Claude Code** ([Install-Guide-for-Claude-Code.md](docs/Install-Guide-for-Claude-Code.md)):
+  an ordered, end-to-end install runbook for a fresh cloner — written so a new user's Claude Code can stand
+  the whole solution up. Unlike the component reference pages, it sequences the install in phases (host check →
+  code + shared network → `.env`/compose → build → seed voice table + first clip → wire n8n + end-to-end test →
+  optional ESP32), each ending in a **verification gate**. Inlines the real traps (substitute the author's LAN
+  IPs, single-GPU fallback, Dockerfile-needs-a-real-build, drive the stack with one tool, the n8n macvlan →
+  public-webhook fix) and flags ▶ YOUR TURN steps. Linked from Home + sidebar under "Build & deploy".
+- **Module Reference page** ([Module-Reference.md](docs/Module-Reference.md)): a decoder for
+  the build's short codes (C1, C2/C3, A2, D2a, J3, K4 …) that appear across the wiki, commits,
+  and working notes. Explains the convention (letter = work-stream, number = step), a glance
+  table of all work-streams A–N, and deep-dives on the `C` brain pipeline (C0–C4) and the `J`
+  ESP32 sub-streams (JA/JB/JC). Linked from Home + sidebar under "Start here".
 - **TTS Options — speed notes** ([TTS-Options.md](docs/TTS-Options.md)): measured F5-vs-Parler
   head-to-head (same text via `/speak`). F5 ~8s vs Parler ~14.7s (~1.8× faster) despite F5 being on
   the slower 3060 — it's non-autoregressive. F5 has **no per-voice cold start or expiry** (a never-

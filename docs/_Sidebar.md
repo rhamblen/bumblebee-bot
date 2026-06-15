@@ -4,6 +4,7 @@
 
 **Start here**
 - [Concept & Lore](Concept-and-Lore)
+- [Module Reference (C1, A2 …)](Module-Reference)
 - [Architecture & Workflow](Architecture-and-Workflow)
   - [1. Mood Classification (C1)](Workflow-Mood-Classification)
   - [2. Character Selection](Workflow-Character-Selection)
@@ -11,6 +12,7 @@
   - [4. Orchestration & Playback](Workflow-Orchestration-and-Playback)
 
 **Build & deploy**
+- [Install Guide (for Claude Code)](Install-Guide-for-Claude-Code)
 - [Docker Containers](Docker-Containers)
   - [Service: Orchestrator](Service-Orchestrator)
   - [Service: Xiaozhi Gateway](Service-Xiaozhi-Gateway)

@@ -11,10 +11,12 @@ This wiki is the full write-up of how the system is built: a local, GPU-accelera
 ## Start here
 
 - **[Concept & Lore](Concept-and-Lore)** — what Bumblebee is, the canon behind it, and the design rules that follow
+- **[Module Reference](Module-Reference)** — the decoder for the build's short codes (C1, C2/C3, A2, J3, K4 …): a letter is a work-stream, a number is a step within it
 - **[Architecture & Workflow](Architecture-and-Workflow)** — the diagrams: system layout, request lifecycle, and multi-device topology. The n8n workflow is broken out stage by stage: [mood](Workflow-Mood-Classification) → [casting](Workflow-Character-Selection) → [composition](Workflow-Composition) → [orchestration & playback](Workflow-Orchestration-and-Playback)
 
 ## Build & deploy
 
+- **[Install Guide (for Claude Code)](Install-Guide-for-Claude-Code)** — the ordered end-to-end runbook for a fresh cloner: an agent-oriented install path with verification gates, links the reference pages together
 - **[Docker Containers](Docker-Containers)** — the 9 services, building, publishing, and custom Unraid icons. Per-service deep dives: [Orchestrator](Service-Orchestrator), [Gateway](Service-Xiaozhi-Gateway), [Whisper STT](Service-Whisper-STT), [Audio Converter](Service-Audio-Converter)
 - **[Unraid Template](Unraid-Template)** — install on Unraid, the shared Docker network, env vars, and volumes
 
