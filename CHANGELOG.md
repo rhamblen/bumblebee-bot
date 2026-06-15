@@ -10,6 +10,22 @@ dated, and pushed to GitHub along with any docs/Wiki updates — so the reposito
 always reflects the project's true current status and the choices made.
 
 ## [Unreleased]
+### Added
+- **Admin Console — Devices tab + gateway device registry.** The console gained a **Devices** tab
+  listing every ESP32 client the [gateway](docs/Service-Xiaozhi-Gateway.md#device-registry) has seen —
+  online/offline (live), last-seen, IP, last **heard** (transcript) and last **said** (reply text, when the
+  brain returns it), with an **editable friendly name** per device. This realises the previously-roadmapped
+  "client / wake-word panel".
+  - **Gateway (`docker/xiaozhi-gateway/`)** now keeps a small **Redis-backed registry** (`bumblebee:devices`
+    hash, `REDIS_URL` default `redis://redis:6379/0`) so names + last heard/said **survive a restart**;
+    online state is derived live from an in-memory `CONNECTED` set (never stale). Records are upserted on the
+    OTA boot POST, on WS connect/disconnect, and per utterance. Anonymous WS connections (no `Device-Id`) are
+    ignored. Redis is **best-effort** — its failure never blocks the voice path. Two new routes on the OTA
+    server (:5011): `GET /clients` and `POST /clients/{mac}/name`. `get_wav_url` → `get_reply` now returns the
+    full brain response so the reply text can be captured when present. Adds the `redis` dependency.
+  - **Console (`docker/admin-console/`)** proxies the gateway via `GET /api/clients` + `POST /api/clients/rename`
+    (new `GATEWAY_URL`, reusing the health-probe target), with an inline rename editor mirroring the Voices
+    locked-then-edit pattern.
 
 ## [0.10.0] - 2026-06-15
 ### Added

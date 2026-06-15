@@ -2,6 +2,7 @@ services:
 
   f5-tts:
     build: ./f5-tts
+    image: bumblebee-f5-tts          # pinned so `compose build` matches the Unraid template image
     container_name: f5-tts
     restart: unless-stopped
     runtime: nvidia
@@ -18,6 +19,7 @@ services:
 
   parler-tts:
     build: ./parler-tts
+    image: bumblebee-parler-tts
     container_name: parler-tts
     restart: unless-stopped
     runtime: nvidia
@@ -36,6 +38,7 @@ services:
 
   coqui-tts:
     build: ./coqui-tts
+    image: bumblebee-coqui-tts
     container_name: coqui-tts
     restart: unless-stopped
     runtime: nvidia
@@ -53,6 +56,7 @@ services:
 
   chatterbox:
     build: ./chatterbox
+    image: bumblebee-chatterbox
     container_name: chatterbox
     restart: unless-stopped
     runtime: nvidia
@@ -69,6 +73,7 @@ services:
 
   audio-converter:
     build: ./audio-converter
+    image: bumblebee-audio-converter
     container_name: audio-converter
     restart: unless-stopped
     labels:
@@ -80,6 +85,7 @@ services:
 
   xiaozhi-gateway:
     build: ./xiaozhi-gateway
+    image: bumblebee-xiaozhi-gateway
     container_name: xiaozhi-gateway
     restart: unless-stopped
     labels:
@@ -98,12 +104,20 @@ services:
       # Must be the LAN-reachable host:port of the WS server below, not the docker hostname.
       - OTA_WS_URL=ws://192.168.1.33:5010/xiaozhi/v1/
       - OTA_WS_TOKEN=bumblebee-test
+      # Device registry persistence (named clients survive restarts). Same Redis the brain uses.
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      # Home Assistant (on UR2, reachable by LAN IP from this bridge) — used to list media_player
+      # playback targets for the per-device output dropdown, and (enforcement phase) to play_media.
+      # Set HA_URL + HA_TOKEN (long-lived token) in docker/.env. Blank = playback list disabled.
+      - HA_URL=${HA_URL:-}
+      - HA_TOKEN=${HA_TOKEN:-}
     ports:
       - "5010:5010"   # WebSocket (mic up / TTS down)
       - "5011:5011"   # OTA / activation discovery
 
   whisper-stt:
     build: ./whisper-stt
+    image: bumblebee-whisper-stt
     container_name: whisper-stt
     restart: unless-stopped
     runtime: nvidia
@@ -121,6 +135,7 @@ services:
 
   admin-console:
     build: ./admin-console
+    image: bumblebee-admin-console
     container_name: bumblebee-admin-console
     restart: unless-stopped
     labels:
@@ -158,6 +173,7 @@ services:
 
   orchestrator:
     build: ./orchestrator
+    image: bumblebee-orchestrator
     container_name: bumblebee-orchestrator
     restart: unless-stopped
     labels:
@@ -182,3 +198,13 @@ services:
       - coqui-tts
       - chatterbox
       - audio-converter
+
+# All services share the pre-existing `bumblebee_default` bridge (created/owned outside this
+# compose file — originally by the Unraid Docker manager). Declaring it as the project's default
+# network (external: true) makes `docker compose up` ATTACH to it instead of inventing an isolated
+# `bumblebee-docker_default` — which would leave the container unable to resolve its siblings by
+# hostname (Errno -2 / "Name or service not known"). See memory: project_networking.
+networks:
+  default:
+    name: bumblebee_default
+    external: true

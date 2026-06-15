@@ -3,6 +3,7 @@ import io
 import json
 import logging
 import os
+import re
 import tempfile
 import time
 import uuid
@@ -11,6 +12,7 @@ import wave
 import httpx
 import numpy as np
 import opuslib
+import redis.asyncio as aioredis
 import soundfile as sf
 import webrtcvad
 import websockets
@@ -53,6 +55,115 @@ MAX_UTTERANCE_MS = int(os.environ.get("MAX_UTTERANCE_MS", 15000))  # hard cap so
 TEST_VOICE_DESCRIPTION = (
     "A warm, clear male voice with a slight vintage radio quality, speaking at a measured pace."
 )
+
+
+# --------------------------------------------------------------------------- device registry
+# A persisted, named list of the ESP32 clients that have talked to us. The gateway already
+# treats the firmware's `Device-Id` (MAC) as the conversation key; here we also remember the
+# device across restarts so the Admin Console can show it (online state, last-seen, last
+# heard/said) and let the operator give it a friendly name. Online/offline is NOT persisted —
+# it's derived from CONNECTED (the set of MACs with a live WS right now); Redis only holds the
+# durable facts. Redis is best-effort: if it's unreachable the gateway still runs, the registry
+# just goes quiet (a device with no name simply shows as its MAC).
+REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/0")
+DEVICES_KEY = "bumblebee:devices"
+
+CONNECTED: set[str] = set()  # MACs with a live WebSocket connection right now
+_redis: "aioredis.Redis | None" = None
+
+
+async def _get_redis():
+    global _redis
+    if _redis is None:
+        _redis = aioredis.from_url(REDIS_URL, decode_responses=True)
+    return _redis
+
+
+async def register_device(mac: str | None, *, ip: str | None = None, **fields) -> None:
+    """Upsert a device record, preserving its friendly name and first_seen. Pass extra
+    durable facts as kwargs (last_heard, last_said, last_activity). Best-effort: any Redis
+    failure is logged and swallowed so the voice path is never blocked by the registry."""
+    if not mac or mac == "?":
+        return  # no real Device-Id header (anonymous WS) — don't pollute the registry
+    try:
+        r = await _get_redis()
+        raw = await r.hget(DEVICES_KEY, mac)
+        rec = json.loads(raw) if raw else {}
+        now = int(time.time())
+        rec.setdefault("mac", mac)
+        rec.setdefault("name", "")
+        rec.setdefault("first_seen", now)
+        rec["last_seen"] = now
+        if ip:
+            rec["last_ip"] = ip
+        rec.update({k: v for k, v in fields.items() if v is not None})
+        await r.hset(DEVICES_KEY, mac, json.dumps(rec))
+    except Exception as e:  # noqa: BLE001 - registry is best-effort, never fatal
+        log.warning("[devices] register failed for %s: %s", mac, e)
+
+
+# --------------------------------------------------------------------------- playback targets
+# Per-device output routing: each device's reply can play on its own ESP32 speaker (default)
+# or on any Home Assistant media_player (e.g. the Sonos Roam). The Admin Console needs a list
+# of valid targets to populate its dropdown; we fetch that from HA here (the gateway is the
+# single HA-credential holder) and cache it in Redis so the dropdown loads without re-hitting
+# HA every time — the console's "↻ Refresh playback devices" button forces a live re-pull.
+# HA is on UR2 (a different host than this bridge), so it's reachable by LAN IP — no tunnel.
+HA_URL = os.environ.get("HA_URL", "")        # e.g. http://192.168.1.64:8123
+HA_TOKEN = os.environ.get("HA_TOKEN", "")    # long-lived access token (HA → Profile → Security)
+PLAYBACK_KEY = "bumblebee:playback_devices"  # cached HA media_player list
+
+# "Speakers only" filter: drop TVs / receivers / hubs by entity_id substring. media_player has
+# no reliable speaker-vs-tv device_class, so this is a pragmatic denylist, refined as needed.
+_NON_SPEAKER_RE = re.compile(r"(tv|appletv|apple_tv|fire_tv|firetv|firestick|_hub|str_dn|television|receiver|audi_)", re.I)
+
+
+def ha_configured() -> bool:
+    return bool(HA_URL and HA_TOKEN)
+
+
+async def fetch_playback_devices() -> list[dict]:
+    """Pull media_player entities from HA, filter to likely speakers, dedupe HA's `_N` registry
+    duplicates (keeping the best per base name), sort by friendly name, and cache in Redis."""
+    if not ha_configured():
+        raise RuntimeError("HA_URL/HA_TOKEN not configured")
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.get(
+            f"{HA_URL.rstrip('/')}/api/states",
+            headers={"Authorization": f"Bearer {HA_TOKEN}"},
+        )
+        resp.raise_for_status()
+        states = resp.json()
+
+    by_base: dict[str, dict] = {}
+    for s in states:
+        eid = s.get("entity_id", "")
+        if not eid.startswith("media_player.") or _NON_SPEAKER_RE.search(eid):
+            continue
+        state = s.get("state", "")
+        if state == "unavailable":
+            continue
+        name = s.get("attributes", {}).get("friendly_name") or eid
+        base = re.sub(r"_\d+$", "", eid)  # collapse "..._2"/"..._3" duplicates onto one base
+        # keep the first available candidate per base (states already exclude 'unavailable')
+        by_base.setdefault(base, {"entity_id": eid, "name": name, "state": state})
+
+    devices = sorted(by_base.values(), key=lambda d: d["name"].lower())
+    try:
+        r = await _get_redis()
+        await r.set(PLAYBACK_KEY, json.dumps(devices))
+    except Exception as e:  # noqa: BLE001
+        log.warning("[playback] cache write failed: %s", e)
+    return devices
+
+
+async def cached_playback_devices() -> list[dict]:
+    try:
+        r = await _get_redis()
+        raw = await r.get(PLAYBACK_KEY)
+        return json.loads(raw) if raw else []
+    except Exception:  # noqa: BLE001
+        return []
 
 
 def resample_audio(audio: np.ndarray, src_rate: int, dst_rate: int) -> np.ndarray:
@@ -102,7 +213,10 @@ async def transcribe(audio_bytes: bytes) -> str:
         os.unlink(tmp_path)
 
 
-async def get_wav_url(text: str, session_id: str) -> str | None:
+async def get_reply(text: str, session_id: str) -> dict:
+    """Return the brain's response as the raw JSON dict (at least {"url": ...}). The reply
+    *text* is surfaced for the device registry when the source provides it: n8n may echo the
+    generated line back (under text/reply/response), otherwise only the audio url is known."""
     async with httpx.AsyncClient(timeout=60) as client:
         if N8N_WEBHOOK_URL:
             # Production: n8n handles C1+C2+C3, returns {"url": "..."}
@@ -112,7 +226,7 @@ async def get_wav_url(text: str, session_id: str) -> str | None:
                 json={"text": text, "session_id": session_id},
             )
             resp.raise_for_status()
-            return resp.json().get("url")
+            return resp.json()
         else:
             # Test mode: call orchestrator directly with Parler
             resp = await client.post(
@@ -124,7 +238,17 @@ async def get_wav_url(text: str, session_id: str) -> str | None:
                 },
             )
             resp.raise_for_status()
-            return resp.json().get("url")
+            return resp.json()
+
+
+def _reply_text(reply: dict) -> str | None:
+    """Best-effort extraction of the spoken reply text from a brain response, across the
+    field names n8n/orchestrator might use. None when only an audio url came back."""
+    for k in ("reply", "response", "said", "text", "message"):
+        v = reply.get(k)
+        if isinstance(v, str) and v.strip():
+            return v.strip()
+    return None
 
 
 async def stream_wav_as_opus(websocket, wav_url: str):
@@ -185,7 +309,10 @@ def extract_device_id(websocket) -> str | None:
 
 async def handle_connection(websocket):
     session_id = str(uuid.uuid4())  # per-connection id, used for the hello handshake + logs
-    device_id = extract_device_id(websocket) or session_id  # stable per-device conversation key
+    device_mac = extract_device_id(websocket)        # real MAC, or None for an anonymous WS
+    device_id = device_mac or session_id             # stable per-device conversation key
+    peer = websocket.remote_address
+    peer_ip = peer[0] if peer else None
     decoder = opuslib.Decoder(MIC_SAMPLE_RATE, MIC_CHANNELS)
     vad = webrtcvad.Vad(VAD_AGGRESSIVENESS)
     listening = False
@@ -228,16 +355,22 @@ async def handle_connection(websocket):
             return
 
         await websocket.send(json.dumps({"type": "stt", "text": text}))
+        await register_device(device_mac, last_heard=text, last_activity=int(time.time()))
 
         try:
-            wav_url = await get_wav_url(text, device_id)
+            reply = await get_reply(text, device_id)
         except Exception as e:
             log.error("[%s] TTS request failed: %s", session_id, e)
             return
 
+        wav_url = reply.get("url")
         if not wav_url:
             log.warning("[%s] No WAV URL returned", session_id)
             return
+
+        said = _reply_text(reply)
+        if said:
+            await register_device(device_mac, last_said=said, last_activity=int(time.time()))
 
         log.info("[%s] Streaming audio from %s", session_id, wav_url)
         speaking = True
@@ -249,6 +382,9 @@ async def handle_connection(websocket):
             speaking = False
 
     log.info("[%s] Connected from %s (device_id=%s)", session_id, websocket.remote_address, device_id)
+    if device_mac:
+        CONNECTED.add(device_mac)
+        await register_device(device_mac, ip=peer_ip)
 
     try:
         async for message in websocket:
@@ -330,6 +466,10 @@ async def handle_connection(websocket):
         log.info("[%s] Connection closed", session_id)
     except Exception as e:
         log.error("[%s] Unhandled error: %s", session_id, e)
+    finally:
+        if device_mac:
+            CONNECTED.discard(device_mac)
+            await register_device(device_mac)  # bump last_seen on disconnect
 
 
 async def ota_handler(request: web.Request) -> web.Response:
@@ -343,6 +483,10 @@ async def ota_handler(request: web.Request) -> web.Response:
     device_id = request.headers.get("Device-Id", "?")
     client_id = request.headers.get("Client-Id", "?")
     log.info("[OTA] %s from Device-Id=%s Client-Id=%s", request.method, device_id, client_id)
+    # A boot/OTA POST is the earliest we see a device — register it so it appears in the
+    # console even before it opens a WS. (GET is the console's own liveness probe; skip those.)
+    if request.method == "POST":
+        await register_device(device_id, ip=request.remote)
 
     return web.json_response({
         "server_time": {
@@ -360,11 +504,97 @@ async def ota_handler(request: web.Request) -> web.Response:
     })
 
 
+async def clients_handler(request: web.Request) -> web.Response:
+    """List every known device for the Admin Console. Merges the durable Redis records with
+    the live CONNECTED set so `online` reflects right-now state, not what was last persisted."""
+    devices = []
+    try:
+        r = await _get_redis()
+        raw = await r.hgetall(DEVICES_KEY)
+        for mac, blob in raw.items():
+            try:
+                rec = json.loads(blob)
+            except json.JSONDecodeError:
+                continue
+            rec["online"] = mac in CONNECTED
+            devices.append(rec)
+    except Exception as e:  # noqa: BLE001 - report empty rather than 500 the console
+        return web.json_response({"devices": [], "online": 0, "error": str(e)})
+    # Online first, then most-recently-seen.
+    devices.sort(key=lambda d: (not d.get("online"), -(d.get("last_seen") or 0)))
+    return web.json_response({"devices": devices, "online": len(CONNECTED)})
+
+
+async def rename_handler(request: web.Request) -> web.Response:
+    """Set a device's friendly name. The MAC stays the conversation key; the name is cosmetic."""
+    mac = request.match_info["mac"]
+    try:
+        body = await request.json()
+    except Exception:  # noqa: BLE001
+        body = {}
+    name = (body.get("name") or "").strip()[:40]
+    try:
+        r = await _get_redis()
+        raw = await r.hget(DEVICES_KEY, mac)
+        if not raw:
+            return web.json_response({"error": "unknown device"}, status=404)
+        rec = json.loads(raw)
+        rec["name"] = name
+        await r.hset(DEVICES_KEY, mac, json.dumps(rec))
+    except Exception as e:  # noqa: BLE001
+        return web.json_response({"error": str(e)}, status=502)
+    return web.json_response({"ok": True, "mac": mac, "name": name})
+
+
+async def output_handler(request: web.Request) -> web.Response:
+    """Set a device's playback target: `"device"` (its own speaker) or a HA media_player entity_id."""
+    mac = request.match_info["mac"]
+    try:
+        body = await request.json()
+    except Exception:  # noqa: BLE001
+        body = {}
+    output = (body.get("output") or "device").strip()[:80]
+    try:
+        r = await _get_redis()
+        raw = await r.hget(DEVICES_KEY, mac)
+        if not raw:
+            return web.json_response({"error": "unknown device"}, status=404)
+        rec = json.loads(raw)
+        rec["output"] = output
+        await r.hset(DEVICES_KEY, mac, json.dumps(rec))
+    except Exception as e:  # noqa: BLE001
+        return web.json_response({"error": str(e)}, status=502)
+    return web.json_response({"ok": True, "mac": mac, "output": output})
+
+
+async def playback_devices_handler(request: web.Request) -> web.Response:
+    """List valid playback targets for the Admin Console dropdown. `?refresh=1` forces a live
+    HA pull (and re-caches); otherwise serve the Redis cache, falling back to a live pull when
+    the cache is empty. Soft-fails to an empty list + reason so the tab still renders."""
+    want_refresh = request.query.get("refresh") == "1"
+    try:
+        if want_refresh:
+            devices = await fetch_playback_devices()
+        else:
+            devices = await cached_playback_devices()
+            if not devices and ha_configured():
+                devices = await fetch_playback_devices()
+    except Exception as e:  # noqa: BLE001
+        return web.json_response(
+            {"devices": [], "error": str(e), "ha_configured": ha_configured()})
+    return web.json_response({"devices": devices, "ha_configured": ha_configured()})
+
+
 async def start_ota_server():
     app = web.Application()
     # Accept both POST (firmware) and GET (manual browser check) on the conventional path.
     app.router.add_route("*", "/xiaozhi/ota/", ota_handler)
     app.router.add_route("*", "/xiaozhi/ota", ota_handler)
+    # Device registry for the Admin Console (same HTTP server the console already reaches).
+    app.router.add_get("/clients", clients_handler)
+    app.router.add_post("/clients/{mac}/name", rename_handler)
+    app.router.add_post("/clients/{mac}/output", output_handler)
+    app.router.add_get("/playback-devices", playback_devices_handler)
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", OTA_PORT)

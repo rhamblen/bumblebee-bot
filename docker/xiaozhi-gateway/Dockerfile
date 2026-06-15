@@ -15,6 +15,7 @@ RUN pip install --no-cache-dir \
     numpy \
     httpx \
     scipy \
+    redis \
     webrtcvad-wheels
 
 WORKDIR /app

@@ -13,6 +13,7 @@ The UI is a thin tabbed shell driven by a single declarative array, so tabs are 
 | Tab | What it shows | Page |
 |---|---|---|
 | **Service health** | Live up/down/na for every container, in workflow order | [Service Health](Admin-Console-Service-Health.md) |
+| **Devices** | The ESP32 clients the gateway has seen — online/offline, last-seen, IP, last heard/said, editable friendly name (persisted) | [Service: Xiaozhi Gateway](Service-Xiaozhi-Gateway.md#device-registry) |
 | **Config** | Per-container env view + validator + editable `.env` + drift check | [Config](Admin-Console-Config.md) |
 | **Voices** | Live character table (sorted by model then name) — F5-clip vs Parler split, type/register, editable Parler descriptions, per-voice ▶ Play preview + 🔥 F5 warm-up | [Voices](Admin-Console-Voices.md) |
 | **Clip Capture** | Source F5 reference clips from YouTube — per Parler-only voice: download a snippet, preview, accept → flips the voice to F5 | [Clip Capture](Admin-Console-Clip-Capture.md) |
@@ -60,4 +61,4 @@ The shell wires the button, panel, lazy-load, refresh, and timestamp automatical
 
 Tab-specific plans live on each tab page ([Config](Admin-Console-Config.md#roadmap-for-this-tab), [Voices](Admin-Console-Voices.md#roadmap-for-this-tab)). Cross-cutting, not yet built:
 
-- **Client / wake-word panel** — a new tab reading the per-device registry from the [gateway](Service-Xiaozhi-Gateway.md).
+- **Per-device routing & wake-word config** — the [Devices](#the-tabs) tab now lists and names clients (the per-device registry); the next step is making the friendly name/MAC drive output routing and per-device wake-word settings.

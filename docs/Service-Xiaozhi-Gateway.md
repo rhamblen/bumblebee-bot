@@ -63,6 +63,22 @@ On boot the firmware POSTs to `/xiaozhi/ota/` (port 5011). The gateway replies w
 
 > The gateway has no `GET /health`; the [Admin Console](Admin-Console-Service-Health.md) probes its OTA endpoint (`GET /xiaozhi/ota/`) as a liveness stand-in.
 
+## Device registry
+
+The gateway is the only service that sees the physical ESP32 connections, so it also keeps a small **registry** of the devices that have talked to it — the source behind the Admin Console's [Devices tab](Admin-Console.md#the-tabs).
+
+- **Storage:** a Redis hash `bumblebee:devices` (field = MAC, value = JSON), persisted so a device's friendly **name** and its last **heard/said** survive a gateway restart. `REDIS_URL` defaults to `redis://redis:6379/0` (the same Redis the brain uses). Redis is **best-effort** — if it's unreachable the voice path is unaffected; the registry just goes quiet.
+- **What's persisted:** `mac`, `name` (operator-set, cosmetic), `first_seen`, `last_seen`, `last_ip`, `last_heard` (the transcript), `last_said` (the reply text *when the brain returns it* — n8n/orchestrator may hand back only an audio url, in which case `last_said` stays blank).
+- **What's live, not stored:** online/offline. The gateway holds an in-memory `CONNECTED` set of MACs with a live WebSocket; `online` is computed at read time, so it's never stale after a restart.
+- **When it updates:** on the OTA boot POST (earliest sighting), on WS connect/disconnect (online + `last_seen`), and on each utterance (`last_heard`/`last_said`). Anonymous WS connections (no `Device-Id` header) are ignored so random per-connection ids don't pollute the list.
+
+Two HTTP routes on the OTA server (port 5011) back the tab:
+
+| Route | Purpose |
+|---|---|
+| `GET /clients` | `{devices:[…], online:N}` — durable records merged with the live online set, online-first then most-recent |
+| `POST /clients/{mac}/name` | set a device's friendly name (`{name}`); the MAC stays the conversation key |
+
 ## Configuration
 
-`N8N_WEBHOOK_URL`, `OTA_WS_URL`, `OTA_WS_TOKEN`, `WHISPER_URL`, `ORCHESTRATOR_URL`, and the VAD/silence tuning vars are all in the canonical [Environment variable reference](Docker-Containers.md#environment-variable-reference).
+`N8N_WEBHOOK_URL`, `OTA_WS_URL`, `OTA_WS_TOKEN`, `WHISPER_URL`, `ORCHESTRATOR_URL`, `REDIS_URL` (device registry — see above), and the VAD/silence tuning vars are all in the canonical [Environment variable reference](Docker-Containers.md#environment-variable-reference).

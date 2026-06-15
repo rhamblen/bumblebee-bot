@@ -185,6 +185,28 @@ async def rename_client(mac: str, name: str) -> dict:
         return {"ok": True, **r.json()}
 
 
+async def playback_devices(refresh: bool = False) -> dict:
+    """Valid playback targets (HA media_players) for the per-device output dropdown, via the
+    gateway (the single HA-credential holder). `refresh` forces a live HA re-pull."""
+    try:
+        async with httpx.AsyncClient(timeout=12.0) as client:
+            url = f"{GATEWAY_URL.rstrip('/')}/playback-devices" + ("?refresh=1" if refresh else "")
+            r = await client.get(url)
+            r.raise_for_status()
+            return r.json()
+    except Exception as e:  # noqa: BLE001
+        return {"devices": [], "error": str(e), "ha_configured": False}
+
+
+async def set_output(mac: str, output: str) -> dict:
+    """Proxy a per-device output-target change to the gateway."""
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        r = await client.post(f"{GATEWAY_URL.rstrip('/')}/clients/{mac}/output", json={"output": output})
+        if r.status_code >= 400:
+            return {"ok": False, "reason": r.json().get("error", r.text)}
+        return {"ok": True, **r.json()}
+
+
 _VAR_RE = re.compile(r"\$\{([A-Z0-9_]+)(?::-[^}]*)?\}")
 
 
@@ -878,6 +900,17 @@ async def api_clients_rename(req: Request):
     return await rename_client(b.get("mac", ""), b.get("name", ""))
 
 
+@app.get("/api/playback-devices")
+async def api_playback_devices(refresh: int = 0):
+    return await playback_devices(refresh=bool(refresh))
+
+
+@app.post("/api/clients/output")
+async def api_clients_output(req: Request):
+    b = await req.json()
+    return await set_output(b.get("mac", ""), b.get("output", "device"))
+
+
 @app.post("/api/voice-preview")
 async def api_voice_preview(req: Request):
     b = await req.json()
@@ -1074,22 +1107,64 @@ function dnSave(mac){
    td.dataset.name=d.name;td.innerHTML=dnLocked(mac,d.name)+' <span class=ok>✓</span>';
   }).catch(e=>{td.innerHTML=dnLocked(mac,td.dataset.name||'')+` <span class=bad>✗ ${esc(e)}</span>`;});
 }
+// ---- playback targets (HA media_players) for the per-device output dropdown -------------
+let _pbDevices=[];   // cached list used to build the <select> options on each row
+function pbInfo(pb){
+ if(pb.error)return `<span class=warn>⚠ HA unreachable: ${esc(pb.error)}</span>`;
+ if(!pb.ha_configured)return `<span class=warn>⚠ HA not configured — set HA_URL/HA_TOKEN on the gateway</span>`;
+ return `${(pb.devices||[]).length} playback target(s)`;
+}
+function outputSelect(mac,cur){
+ cur=cur||'device';
+ let opts=`<option value="device"${cur==='device'?' selected':''}>This device (speaker)</option>`;
+ for(const p of _pbDevices)
+  opts+=`<option value="${esc(p.entity_id)}"${cur===p.entity_id?' selected':''}>${esc(p.name)}</option>`;
+ // keep a now-unavailable saved target visible so it isn't silently lost
+ if(cur!=='device'&&!_pbDevices.some(p=>p.entity_id===cur))
+  opts+=`<option value="${esc(cur)}" selected>${esc(cur)} (unavailable)</option>`;
+ return `<select onchange="outputSave('${esc(mac)}',this)" `+
+   `style="background:#111;color:#eee;border:1px solid #444;border-radius:4px;padding:4px 6px;max-width:200px">${opts}</select>`;
+}
+function outputSave(mac,sel){
+ const val=sel.value;sel.disabled=true;
+ const cell=sel.parentElement;const old=cell.querySelector('.outmsg');if(old)old.remove();
+ fetch('/api/clients/output',{method:'POST',headers:{'content-type':'application/json'},
+   body:JSON.stringify({mac,output:val})})
+  .then(r=>r.json()).then(d=>{
+   sel.disabled=false;
+   const m=document.createElement('span');m.className='outmsg';
+   m.innerHTML=d.ok?' <span class=ok>✓</span>':` <span class=bad>✗ ${esc(d.reason||'failed')}</span>`;
+   cell.appendChild(m);setTimeout(()=>{m.remove();},4000);
+  }).catch(e=>{sel.disabled=false;});
+}
+function pbRefresh(btn){
+ const orig=btn.innerHTML;btn.disabled=true;btn.innerHTML='↻ refreshing…';
+ fetch('/api/playback-devices?refresh=1').then(r=>r.json()).then(pb=>{
+  _pbDevices=pb.devices||[];btn.disabled=false;btn.innerHTML=orig;
+  refresh('devices');   // rebuild rows so every dropdown reflects the refreshed list
+ }).catch(e=>{btn.disabled=false;btn.innerHTML=orig;
+  const info=document.getElementById('pbinfo');if(info)info.innerHTML=`<span class=bad>✗ ${esc(e)}</span>`;});
+}
 async function loadDevices(){
- const d=await j('/api/clients');
+ const [d,pb]=await Promise.all([j('/api/clients'),j('/api/playback-devices')]);
  const devs=d.devices||[];
+ _pbDevices=pb.devices||[];
  let h='';
  if(d.error)h+=`<p class=warn>⚠ gateway unreachable: ${esc(d.error)} — list may be stale.</p>`;
+ h+=`<div style="margin-bottom:10px"><button class=refresh onclick="pbRefresh(this)">↻ Refresh playback devices</button> `+
+    `<span id=pbinfo style="color:#888">${pbInfo(pb)}</span></div>`;
  h+=`<p><span class=ok>${d.online||0} online</span> · ${devs.length} known device(s). `+
-    `Names are cosmetic — the MAC stays each device's conversation key.</p>`;
+    `Names are cosmetic — the MAC stays each device's conversation key. <b>Output</b> routes the reply to the device's own speaker or a Home Assistant media player.</p>`;
  if(!devs.length)return h+'<p style="color:#888">No devices yet — power on an ESP32; it appears here on its first OTA/connect.</p>';
- h+='<table><tr><th style="min-width:150px">name</th><th>status</th><th>MAC</th><th>last seen</th>'+
-    '<th>IP</th><th style="width:26%">last heard</th><th style="width:26%">last said</th></tr>';
+ h+='<table><tr><th style="min-width:140px">name</th><th>status</th><th>output</th><th>MAC</th><th>last seen</th>'+
+    '<th>IP</th><th style="width:22%">last heard</th><th style="width:22%">last said</th></tr>';
  for(const x of devs){
   const mac=x.mac;
   const st=x.online?'<span class=ok>● online</span>':'<span style="color:#888">○ offline</span>';
   h+=`<tr>`+
      `<td id="dn-${esc(mac)}" data-name="${esc(x.name||'')}">${dnLocked(mac,x.name||'')}</td>`+
      `<td style="white-space:nowrap">${st}</td>`+
+     `<td>${outputSelect(mac,x.output)}</td>`+
      `<td style="font:12px monospace;color:#aac">${esc(mac)}</td>`+
      `<td style="white-space:nowrap">${ago(x.last_seen)}</td>`+
      `<td style="font:12px monospace;color:#9a9">${esc(x.last_ip||'—')}</td>`+
