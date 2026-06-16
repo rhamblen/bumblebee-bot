@@ -32,6 +32,10 @@
 - [STT Options](STT-Options)
 - [TTS Options](TTS-Options)
 - [Voice Input: Alexa → ESP32](Voice-Input-Alexa-vs-ESP32)
+- [ESP32 Assets OTA](ESP32-Assets-OTA)
+
+**Character library**
+- [Character Library](Character-Library)
 
 **How the brain decides**
 - [Input Metadata Schema](Input-Metadata-Schema)

@@ -95,6 +95,24 @@ Each device's reply can play on its **own ESP32 speaker** (`output: "device"`, t
 
 > **n8n must cooperate.** n8n's workflow has a hardcoded "Play on Sonos" node that fires for **every** webhook call. Until that node is gated on `play_on_server !== false`, n8n keeps playing every reply on Sonos regardless of the per-device selection (it double-plays). Gating it preserves the typed-message path (callers that omit the flag still get Sonos) while letting the gateway own routing for devices.
 
+## Device personality (Q — planned)
+
+The gateway is also the delivery mechanism for **assets-partition OTA** updates — pushing a
+new wake word model, Bumblebee display faces, or screen theme to a device without touching
+the firmware. The full binary format and push protocol are documented in
+[ESP32 Assets OTA](ESP32-Assets-OTA.md).
+
+Two additions planned under work-stream Q:
+
+| Addition | What |
+|---|---|
+| `GET /assets/current.bin` | Serves the compiled `assets.bin` from a mounted volume |
+| `POST /clients/{mac}/push-assets` | Sends `self.assets.set_download_url` + `self.reboot` MCP commands to the named device over its live WebSocket; device self-flashes the assets partition and reconnects |
+
+The MCP send capability (Q5) also requires upgrading `CONNECTED` from a `set` to a
+`dict[mac, websocket]`, which doubles as the "route reply to latest live WS" defence
+against reconnects under load (known-issue #5).
+
 ## Configuration
 
 `N8N_WEBHOOK_URL`, `OTA_WS_URL`, `OTA_WS_TOKEN`, `WHISPER_URL`, `ORCHESTRATOR_URL`, `REDIS_URL` (device registry — see above), and the VAD/silence tuning vars are all in the canonical [Environment variable reference](Docker-Containers.md#environment-variable-reference).

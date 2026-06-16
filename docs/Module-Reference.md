@@ -41,6 +41,8 @@ So **C1** reads as *"the brain work-stream, step 1 — mood classification."*
 | **L** | GitHub write-up | This repo's README + Wiki documentation effort | Live |
 | **M** | Admin Console | The operator web UI and its tabs (health, config, voices, clip capture) | Live |
 | **N** | Voices description editing | Inline edit of Parler `voice_description` from the Voices tab | Built |
+| **P** | QT custom display faces | Bumblebee-face GIFs + emotion-driven display → superseded by Q | → see Q |
+| **Q** | ESP32 device personality | Python asset compiler + assets-partition OTA: wake word, display faces, screen theme — all pushed wirelessly, no firmware reflash | Open |
 
 ## The brain — C (the codes you'll see most)
 
@@ -70,8 +72,31 @@ its own. See [Voice Input: Alexa → ESP32](Voice-Input-Alexa-vs-ESP32.md) and
 | **J1–J5** | Foundation | Whisper container, gateway WS server, Opus codec, firmware flash |
 | **JA** | Inbound STT | Mic → Opus → VAD → Whisper → text → webhook (`session_id = device MAC`) |
 | **JB** | Outbound TTS | WAV → Opus frames → streamed to the device speaker, with per-segment failure guard |
-| **JC** | Join & multi-device | Device registry, `/ota` self-onboarding, per-device output routing (`self`/`sonos`/`both`) |
-| **J7** | Wake word | On-device ESP-SR wake word (deferred to the hardware bench session) |
+| **JC** | Join & multi-device | Device registry, `/ota` self-onboarding, per-device output routing |
+| **J7** | Wake word | → superseded by **Q** (assets-partition OTA, no reflash) |
+
+## ESP32 device personality — Q
+
+`Q` covers everything that makes the physical ESP32 device feel like Bumblebee rather than a
+generic voice assistant. Wake word, display faces, and screen theme are all packed into the same
+`assets` partition binary and pushed to the device wirelessly — no USB, no firmware reflash.
+See [ESP32 Assets OTA](ESP32-Assets-OTA.md) for the full binary format and push mechanism.
+
+| Code | Step | What it covers |
+|---|---|---|
+| **Q1** | Model extraction | Copy pre-compiled ESP-SR model binaries out of the xiaozhi-assets-generator repo |
+| **Q2** | Python asset compiler | `srmodels_bin.py` + `assets_bin.py` + `image_conv.py` + `build.py` + `config.yaml` |
+| **Q3** | First assets.bin | Produce and hex-verify the binary before touching any device |
+| **Q4** | Gateway: serve binary | `GET /assets/current.bin` on port 5011; `OTA_HOST` env var |
+| **Q5** | Gateway: MCP send | `CONNECTED` dict + `send_mcp_command()` coroutine |
+| **Q6** | Gateway: push endpoint | `POST /clients/{mac}/push-assets` → `set_download_url` + `reboot` MCP commands |
+| **Q7** | Admin console button | "Push Assets" on each Devices-tab row; polls until device reconnects |
+| **Q8** | Phase 1 test | Wake word live on device via one button click |
+| **Q9** | Bumblebee face GIFs | Idle, listening, speaking, thinking, happy, sad — 240×240 ST7789 |
+| **Q10** | Faces in compiler | Emoji set added to `config.yaml`; same binary push carries wake word + faces |
+| **Q11** | Emotion forwarding | Gateway forwards `emotion` from brain reply to device display |
+| **Q12** | Phase 2 test | Face transitions live end-to-end |
+| **Q13** | Custom wake word | "Hey Bee" via MultiNet `mn7_en` + FST compilation (Phase 3, non-trivial) |
 
 ## Reading a code in the wild
 

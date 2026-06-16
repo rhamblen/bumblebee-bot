@@ -49,6 +49,10 @@ This wiki is the full write-up of how the system is built: a local, GPU-accelera
 
 ## Status
 
-The core pipeline works end-to-end: text/voice in → mood read → 1–3 character voices → vintage filter → played on Sonos. The main frontier is sourcing more reference clips (more clips = richer voice cloning) and finishing the multi-device ESP32 voice path.
+The core pipeline works end-to-end: text/voice in → mood read → 1–3 character voices → vintage filter → played on Sonos or the ESP32 speaker. Current frontiers:
+
+- **Reference clips** — more clips = richer voice cloning (the ongoing bottleneck)
+- **Latency** — Parler TTS dominates the ~40–55 s round trip; the main UX blocker
+- **Device personality (Q)** — wake word + Bumblebee display faces pushed wirelessly to QT via assets-partition OTA, no firmware reflash ([ESP32 Assets OTA](ESP32-Assets-OTA))
 
 > This wiki is kept in sync with the repository — it mirrors the `docs/` folder, and is updated alongside functional changes so it always reflects the project's true current state. See the repo's `CHANGELOG.md` for version history.
