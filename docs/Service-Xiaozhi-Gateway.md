@@ -47,6 +47,10 @@ Two layers stop near-silent or echoey audio turning into garbage replies:
 
 It also **ignores mic frames while it's speaking** (the `speaking` flag) and **paces TTS frames to real time** so `tts:stop` lands at the true end of audio — otherwise the device resumes listening while its own speaker is still going and captures the playback as echo.
 
+## Surviving the slow brain call (keepalive)
+
+The brain (Ollama + Parler) can take ~25 s. If the gateway blocked the WS read loop for that long, the device's continuous mic stream would back up (TCP backpressure) and the firmware would drop and reconnect the WebSocket — so the rendered reply had no live connection to stream to (`no close frame received or sent`), and the ESP32 speaker stayed silent (this was masked while Sonos played the reply in parallel). So a turn (transcribe → brain → route) runs as a **background task** (`run_turn`, kicked off by `start_turn`) while the read loop keeps consuming — and discarding, via the `processing` flag — mic frames throughout. A `_keepalive` task also **pings the device every `KEEPALIVE_INTERVAL_S`** (default 4 s) during the wait. Together these keep the connection alive long enough to stream the reply back.
+
 ## Production vs test mode
 
 | | `N8N_WEBHOOK_URL` set | blank |
@@ -68,7 +72,7 @@ On boot the firmware POSTs to `/xiaozhi/ota/` (port 5011). The gateway replies w
 The gateway is the only service that sees the physical ESP32 connections, so it also keeps a small **registry** of the devices that have talked to it — the source behind the Admin Console's [Devices tab](Admin-Console.md#the-tabs).
 
 - **Storage:** a Redis hash `bumblebee:devices` (field = MAC, value = JSON), persisted so a device's friendly **name** and its last **heard/said** survive a gateway restart. `REDIS_URL` defaults to `redis://redis:6379/0` (the same Redis the brain uses). Redis is **best-effort** — if it's unreachable the voice path is unaffected; the registry just goes quiet.
-- **What's persisted:** `mac`, `name` (operator-set, cosmetic), `first_seen`, `last_seen`, `last_ip`, `last_heard` (the transcript), `last_said` (the reply text *when the brain returns it* — n8n/orchestrator may hand back only an audio url, in which case `last_said` stays blank).
+- **What's persisted:** `mac`, `name` (operator-set, cosmetic), `first_seen`, `last_seen`, `last_ip`, `last_heard` (the transcript), `last_said` (the reply text *when the brain returns it* — n8n/orchestrator may hand back only an audio url, in which case `last_said` stays blank), `output` (playback target — see below).
 - **What's live, not stored:** online/offline. The gateway holds an in-memory `CONNECTED` set of MACs with a live WebSocket; `online` is computed at read time, so it's never stale after a restart.
 - **When it updates:** on the OTA boot POST (earliest sighting), on WS connect/disconnect (online + `last_seen`), and on each utterance (`last_heard`/`last_said`). Anonymous WS connections (no `Device-Id` header) are ignored so random per-connection ids don't pollute the list.
 
@@ -78,6 +82,18 @@ Two HTTP routes on the OTA server (port 5011) back the tab:
 |---|---|
 | `GET /clients` | `{devices:[…], online:N}` — durable records merged with the live online set, online-first then most-recent |
 | `POST /clients/{mac}/name` | set a device's friendly name (`{name}`); the MAC stays the conversation key |
+| `POST /clients/{mac}/output` | set the device's playback target (`{output}`) — `"device"` or a HA `media_player` entity_id |
+| `GET /playback-devices` | valid playback targets for the output dropdown (`?refresh=1` forces a live HA pull) |
+
+## Output routing (per-device playback target)
+
+Each device's reply can play on its **own ESP32 speaker** (`output: "device"`, the default) or on **any Home Assistant `media_player`** (e.g. the Sonos Roam). The gateway is the single holder of HA credentials (`HA_URL` + `HA_TOKEN`) — HA runs on **UR2**, a different host than this bridge, so it's reachable by LAN IP with no tunnel (unlike [n8n](#production-vs-test-mode)).
+
+`GET /playback-devices` pulls HA's `media_player` states, filters to likely speakers (drops TVs/receivers/`unavailable`, dedupes HA's `_N` registry duplicates), sorts by friendly name, and caches the result in Redis (`bumblebee:playback_devices`) so the [Admin Console](Admin-Console.md) dropdown loads without re-hitting HA; the **↻ Refresh playback devices** button passes `?refresh=1` to re-pull. The chosen target is stored as `output` on the device record.
+
+**Enforcement.** `finalize()` reads `output` per-utterance: `"device"` → stream Opus to the ESP32 (as before); a `media_player` entity_id → call HA `media_player/play_media` with the orchestrator WAV url and skip the device stream (falling back to the device speaker if HA errors). The webhook call to n8n carries `play_on_server: false` so n8n can recognise a gateway-originated request and **skip its own playback**.
+
+> **n8n must cooperate.** n8n's workflow has a hardcoded "Play on Sonos" node that fires for **every** webhook call. Until that node is gated on `play_on_server !== false`, n8n keeps playing every reply on Sonos regardless of the per-device selection (it double-plays). Gating it preserves the typed-message path (callers that omit the flag still get Sonos) while letting the gateway own routing for devices.
 
 ## Configuration
 

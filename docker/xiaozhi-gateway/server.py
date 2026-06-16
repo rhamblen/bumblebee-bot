@@ -50,6 +50,10 @@ VAD_SUBFRAME_SAMPLES = int(MIC_SAMPLE_RATE * VAD_SUBFRAME_MS / 1000)  # 480
 SILENCE_END_MS = int(os.environ.get("SILENCE_END_MS", 800))     # trailing silence that ends an utterance
 MIN_SPEECH_MS = int(os.environ.get("MIN_SPEECH_MS", 300))       # ignore blips shorter than this
 MAX_UTTERANCE_MS = int(os.environ.get("MAX_UTTERANCE_MS", 15000))  # hard cap so a noisy room can't run away
+# The brain (Ollama + Parler) can take ~25s. While we wait we must keep the device's WebSocket
+# alive — both by NOT blocking the read loop (so its mic stream doesn't back up → firmware drops
+# the conn) and by sending periodic WS pings. Cadence below; the device's WS layer auto-pongs.
+KEEPALIVE_INTERVAL_S = float(os.environ.get("KEEPALIVE_INTERVAL_S", 4))
 
 # Test-mode voice used when calling orchestrator directly (no n8n/C2+C3 yet)
 TEST_VOICE_DESCRIPTION = (
@@ -166,6 +170,39 @@ async def cached_playback_devices() -> list[dict]:
         return []
 
 
+async def get_device_output(mac: str | None) -> str:
+    """The device's chosen playback target: `"device"` (its own speaker, default) or a HA
+    media_player entity_id. Read fresh per-utterance so a console change takes effect at once."""
+    if not mac:
+        return "device"
+    try:
+        r = await _get_redis()
+        raw = await r.hget(DEVICES_KEY, mac)
+        if raw:
+            return json.loads(raw).get("output") or "device"
+    except Exception:  # noqa: BLE001
+        pass
+    return "device"
+
+
+async def play_on_ha(entity_id: str, media_url: str) -> None:
+    """Play a rendered reply on a HA media_player. The url is the orchestrator's public WAV
+    (192.168.1.33:5005/files/…), which HA on UR2 reaches over the LAN — same path n8n uses."""
+    if not ha_configured():
+        raise RuntimeError("HA_URL/HA_TOKEN not configured")
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.post(
+            f"{HA_URL.rstrip('/')}/api/services/media_player/play_media",
+            headers={"Authorization": f"Bearer {HA_TOKEN}"},
+            json={
+                "entity_id": entity_id,
+                "media_content_id": media_url,
+                "media_content_type": "music",
+            },
+        )
+        resp.raise_for_status()
+
+
 def resample_audio(audio: np.ndarray, src_rate: int, dst_rate: int) -> np.ndarray:
     if src_rate == dst_rate:
         return audio
@@ -221,9 +258,12 @@ async def get_reply(text: str, session_id: str) -> dict:
         if N8N_WEBHOOK_URL:
             # Production: n8n handles C1+C2+C3, returns {"url": "..."}
             # Webhook reads body.text (falls back to body.phrase); send `text`, not `message`.
+            # play_on_server=False tells n8n NOT to play the reply itself (its hardcoded "Play on
+            # Sonos" node) — the gateway owns per-device output routing for device-originated
+            # requests. A typed-message caller that omits this flag still gets n8n's Sonos playback.
             resp = await client.post(
                 N8N_WEBHOOK_URL,
-                json={"text": text, "session_id": session_id},
+                json={"text": text, "session_id": session_id, "play_on_server": False},
             )
             resp.raise_for_status()
             return resp.json()
@@ -316,7 +356,9 @@ async def handle_connection(websocket):
     decoder = opuslib.Decoder(MIC_SAMPLE_RATE, MIC_CHANNELS)
     vad = webrtcvad.Vad(VAD_AGGRESSIVENESS)
     listening = False
-    speaking = False  # True while we stream TTS back — ignore mic frames during playback
+    speaking = False    # True while we stream TTS back — ignore mic frames during playback
+    processing = False  # True from utterance-end through reply — turn runs as a bg task so the
+                        # read loop keeps draining the socket (no backpressure → no WS drop)
     mode = "auto"
 
     # Incremental utterance state (reset per utterance)
@@ -332,54 +374,91 @@ async def handle_connection(websocket):
         silence_ms = 0
         started = False
 
-    async def finalize(reason: str):
-        """Transcribe the buffered utterance, then synthesize + stream the reply."""
-        nonlocal speaking
+    async def _keepalive():
+        """Ping the device every few seconds so the WS doesn't go idle during the brain call.
+        The device's WS layer auto-pongs; we don't await the pong. Cancelled once the reply lands."""
+        try:
+            while True:
+                await asyncio.sleep(KEEPALIVE_INTERVAL_S)
+                await websocket.ping()
+        except asyncio.CancelledError:
+            pass
+        except Exception:  # noqa: BLE001 - connection going away; the turn will notice
+            pass
+
+    async def run_turn(reason: str, pcm_data: bytes):
+        """Transcribe → brain → route the reply (HA media_player or ESP32 speaker). Runs as a
+        background task (see start_turn) so the read loop keeps draining the socket meanwhile."""
+        nonlocal speaking, processing
+        try:
+            dur_ms = len(pcm_data) // 2 * 1000 // MIC_SAMPLE_RATE
+            log.info("[%s] Utterance end (%s) — %d ms", session_id, reason, dur_ms)
+
+            try:
+                text = await transcribe(pcm_data)
+            except Exception as e:
+                log.error("[%s] Transcribe failed: %s", session_id, e)
+                return
+
+            log.info("[%s] STT result: '%s'", session_id, text)
+            if not text or looks_like_noise(text):
+                log.info("[%s] Dropping empty/noise transcript", session_id)
+                return
+
+            await websocket.send(json.dumps({"type": "stt", "text": text}))
+            await register_device(device_mac, last_heard=text, last_activity=int(time.time()))
+
+            ka = asyncio.create_task(_keepalive())  # keep the WS warm through the slow brain call
+            try:
+                reply = await get_reply(text, device_id)
+            except Exception as e:
+                log.error("[%s] TTS request failed: %s", session_id, e)
+                return
+            finally:
+                ka.cancel()
+
+            wav_url = reply.get("url")
+            if not wav_url:
+                log.warning("[%s] No WAV URL returned", session_id)
+                return
+
+            said = _reply_text(reply)
+            if said:
+                await register_device(device_mac, last_said=said, last_activity=int(time.time()))
+
+            # Per-device output routing: play on a HA media_player, or stream to the ESP32 speaker.
+            output = await get_device_output(device_mac)
+            if output != "device":
+                log.info("[%s] Routing reply to HA media_player %s", session_id, output)
+                try:
+                    await play_on_ha(output, wav_url)
+                    return  # played elsewhere — don't also stream to the device
+                except Exception as e:
+                    log.error("[%s] HA play_media failed (%s) — falling back to device speaker: %s",
+                              session_id, output, e)
+
+            log.info("[%s] Streaming audio from %s", session_id, wav_url)
+            speaking = True
+            try:
+                await stream_wav_as_opus(websocket, wav_url)
+            except Exception as e:
+                log.error("[%s] Audio stream failed: %s", session_id, e)
+        finally:
+            speaking = False
+            processing = False
+
+    def start_turn(reason: str):
+        """Snapshot the utterance and kick off run_turn as a task. Synchronous + non-blocking so
+        the caller (the read loop) returns immediately and keeps consuming/draining mic frames."""
+        nonlocal processing
+        if processing or speaking:
+            return
         pcm_data = bytes(pcm_buf)
         reset_utterance()
         if len(pcm_data) < 2:
             return
-
-        dur_ms = len(pcm_data) // 2 * 1000 // MIC_SAMPLE_RATE
-        log.info("[%s] Utterance end (%s) — %d ms", session_id, reason, dur_ms)
-
-        try:
-            text = await transcribe(pcm_data)
-        except Exception as e:
-            log.error("[%s] Transcribe failed: %s", session_id, e)
-            return
-
-        log.info("[%s] STT result: '%s'", session_id, text)
-        if not text or looks_like_noise(text):
-            log.info("[%s] Dropping empty/noise transcript", session_id)
-            return
-
-        await websocket.send(json.dumps({"type": "stt", "text": text}))
-        await register_device(device_mac, last_heard=text, last_activity=int(time.time()))
-
-        try:
-            reply = await get_reply(text, device_id)
-        except Exception as e:
-            log.error("[%s] TTS request failed: %s", session_id, e)
-            return
-
-        wav_url = reply.get("url")
-        if not wav_url:
-            log.warning("[%s] No WAV URL returned", session_id)
-            return
-
-        said = _reply_text(reply)
-        if said:
-            await register_device(device_mac, last_said=said, last_activity=int(time.time()))
-
-        log.info("[%s] Streaming audio from %s", session_id, wav_url)
-        speaking = True
-        try:
-            await stream_wav_as_opus(websocket, wav_url)
-        except Exception as e:
-            log.error("[%s] Audio stream failed: %s", session_id, e)
-        finally:
-            speaking = False
+        processing = True
+        asyncio.create_task(run_turn(reason, pcm_data))
 
     log.info("[%s] Connected from %s (device_id=%s)", session_id, websocket.remote_address, device_id)
     if device_mac:
@@ -421,16 +500,18 @@ async def handle_connection(websocket):
                         # Manual/push-to-talk path: device signals end-of-speech itself.
                         log.info("[%s] Listening stopped by device", session_id)
                         listening = False
-                        await finalize("device-stop")
+                        start_turn("device-stop")
 
                 elif msg_type == "abort":
                     log.info("[%s] Abort received", session_id)
                     listening = False
                     reset_utterance()
 
-            elif isinstance(message, bytes) and listening and not speaking:
+            elif isinstance(message, bytes) and listening and not speaking and not processing:
                 # Decode this 60ms Opus frame and run VAD incrementally so we can detect
                 # end-of-speech ourselves in auto mode (device never sends a stop there).
+                # (While speaking/processing we still READ frames above — just drop them — so the
+                #  socket keeps draining and the device's mic stream never backs up.)
                 try:
                     pcm = decoder.decode(message, FRAME_SAMPLES)
                 except opuslib.OpusError as e:
@@ -456,10 +537,10 @@ async def handle_connection(websocket):
 
                     total_ms = len(pcm_buf) // 2 * 1000 // MIC_SAMPLE_RATE
                     if started and speech_ms >= MIN_SPEECH_MS and silence_ms >= SILENCE_END_MS:
-                        await finalize("vad-silence")
+                        start_turn("vad-silence")
                         break
                     if total_ms >= MAX_UTTERANCE_MS:
-                        await finalize("max-duration")
+                        start_turn("max-duration")
                         break
 
     except websockets.exceptions.ConnectionClosed:

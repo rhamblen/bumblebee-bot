@@ -10,6 +10,29 @@ dated, and pushed to GitHub along with any docs/Wiki updates — so the reposito
 always reflects the project's true current status and the choices made.
 
 ## [Unreleased]
+
+## [0.12.0] - 2026-06-16
+### Added
+- **Per-device output routing — enforcement (gateway + n8n).** The output target chosen on the Devices tab now
+  actually routes each reply. The gateway reads the device's `output` per-utterance and, when it isn't `device`,
+  calls Home Assistant `media_player/play_media` with the orchestrator WAV url **instead of** streaming Opus to the
+  ESP32 (falling back to the device speaker if HA errors). The gateway's n8n webhook call now carries
+  `play_on_server: false`, and an **IF gate** was added to the n8n workflow (`Respond → Gate → Play on Sonos`) so
+  n8n only plays Sonos when `play_on_server !== false` — preserving the typed-message path while the gateway owns
+  device routing. (n8n edited via its editor REST API — see [[reference_n8n_editing]]; note n8n 2.x's publish/draft
+  model: a PATCH updates only the draft, you must publish for it to go live.)
+### Fixed
+- **Device-speaker playback (keepalive + non-blocking turn).** The ESP32-speaker output never actually worked: the
+  ~25–55 s brain call (Ollama + Parler) ran **inline in the WS read loop**, so the gateway stopped draining the
+  device's mic stream, the socket backed up, and the firmware dropped/reconnected the WebSocket — by the time the
+  reply was rendered there was no live connection (`no close frame received or sent`). It only *seemed* to work
+  because Sonos played the reply in parallel; gating Sonos off exposed the silence. Fix: the turn (transcribe →
+  brain → route) now runs as a **background task** (`run_turn`/`start_turn`) so the read loop keeps consuming (and
+  discarding) mic frames throughout — no backpressure — plus a **`_keepalive` pinger** (`KEEPALIVE_INTERVAL_S`,
+  default 4 s) keeps the WS warm during the wait. A `processing` flag drops mic frames while a turn is in flight.
+  Confirmed working end-to-end: the device speaker plays the reply and the connection holds through the wait.
+
+## [0.11.0] - 2026-06-16
 ### Added
 - **Admin Console — Devices tab + gateway device registry.** The console gained a **Devices** tab
   listing every ESP32 client the [gateway](docs/Service-Xiaozhi-Gateway.md#device-registry) has seen —
@@ -26,7 +49,17 @@ always reflects the project's true current status and the choices made.
   - **Console (`docker/admin-console/`)** proxies the gateway via `GET /api/clients` + `POST /api/clients/rename`
     (new `GATEWAY_URL`, reusing the health-probe target), with an inline rename editor mirroring the Voices
     locked-then-edit pattern.
-
+- **Devices tab — per-device output routing (setting; enforcement to follow).** Each device row gains an
+  **output** dropdown — **"This device (speaker)"** (default) or any Home Assistant `media_player` (e.g. the
+  Sonos Roam) — plus a **↻ Refresh playback devices** button that re-pulls the list from HA.
+  - **Gateway** is the single HA-credential holder (`HA_URL` + `HA_TOKEN`; HA is on UR2, LAN-reachable from
+    the bridge — no tunnel). New routes: `GET /playback-devices` (fetches HA `media_player` states, filters to
+    likely speakers — drops TVs/receivers/`unavailable`, dedupes HA's `_N` registry duplicates — and caches the
+    list in Redis `bumblebee:playback_devices`; `?refresh=1` forces a live re-pull) and `POST /clients/{mac}/output`
+    (stores the chosen target on the device's registry record). Best-effort: HA unreachable/unconfigured → empty
+    list + reason, never a 500.
+  - **Console** proxies via `GET /api/playback-devices` + `POST /api/clients/output`; the dropdown keeps a
+    now-unavailable saved target visible rather than silently dropping it. *(Routing enforcement landed in 0.12.0.)*
 ## [0.10.0] - 2026-06-15
 ### Added
 - **Admin Console — Voices tab: editable Parler descriptions + per-voice audition.** The character
